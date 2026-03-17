@@ -1,0 +1,14 @@
+{
+  "name": "waterfall-hotspring-cave",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=packages/api",
+    "dev:web": "npm run dev --workspace=packages/web",
+    "build:shared": "npm run build --workspace=packages/shared",
+    "build:api": "npm run build:shared && npm run build --workspace=packages/api",
+    "build:web": "npm run build --workspace=packages/web",
+    "build": "npm run build:shared && npm run build --workspace=packages/api && npm run build:web"
+  }
+}
