@@ -5,6 +5,11 @@ node_modules/
 dist/
 build/
 
+# Compiled shared package source artefacts (built in-place during dev)
+packages/shared/src/*.js
+packages/shared/src/*.js.map
+packages/shared/src/*.d.ts
+
 # Environment variables
 .env
 .env.local

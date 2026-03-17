@@ -4,6 +4,9 @@ import { seedLocations } from '../data/seed';
 // In-memory store initialised from seed data
 let locations: Location[] = [...seedLocations];
 
+// Side-store for admin review notes (not part of the public Location shape)
+const reviewNotesMap = new Map<string, string>();
+
 export const locationService = {
   getAll(query: LocationsQuery): { data: Location[]; total: number } {
     let results = locations.filter((l) => l.status === 'approved');
@@ -84,10 +87,15 @@ export const locationService = {
   },
 
   reject(id: string, reviewNotes?: string): Location | undefined {
-    return locationService.update(id, {
-      status: 'rejected',
-      ...(reviewNotes ? { tags: [] } : {}),
-    });
+    const updated = locationService.update(id, { status: 'rejected' });
+    if (updated && reviewNotes) {
+      reviewNotesMap.set(id, reviewNotes);
+    }
+    return updated;
+  },
+
+  getReviewNotes(id: string): string | undefined {
+    return reviewNotesMap.get(id);
   },
 
   getPendingCount(): number {

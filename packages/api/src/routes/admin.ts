@@ -69,7 +69,11 @@ router.put(
         res.status(404).json({ message: 'Location not found' });
         return;
       }
-      res.json({ data: updated, message: 'Location rejected' });
+      res.json({
+        data: updated,
+        message: 'Location rejected',
+        reviewNotes: locationService.getReviewNotes(req.params.id),
+      });
     } catch (err) {
       next(err);
     }
