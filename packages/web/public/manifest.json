@@ -1,0 +1,11 @@
+{
+  "name": "Wild Springs & Caves",
+  "short_name": "WHC",
+  "description": "Discover hot springs, caves, and waterfalls",
+  "theme_color": "#0EA5E9",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "start_url": "/",
+  "icons": []
+}

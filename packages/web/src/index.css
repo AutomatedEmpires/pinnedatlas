@@ -1,0 +1,58 @@
+@import 'leaflet/dist/leaflet.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.map-full {
+  height: calc(100dvh - 64px);
+  width: 100%;
+}
+
+.whc-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  font-size: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  border: 2px solid rgba(255,255,255,0.8);
+  position: relative;
+}
+
+.whc-pin-warning::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 10px;
+  height: 10px;
+  background: #EF4444;
+  border-radius: 50%;
+  border: 1.5px solid white;
+}
+
+.bottom-sheet {
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.bottom-sheet-hidden {
+  transform: translateY(100%);
+}
+
+.bottom-sheet-visible {
+  transform: translateY(0);
+}
+
+.drag-handle {
+  width: 36px;
+  height: 4px;
+  background: #D1D5DB;
+  border-radius: 2px;
+  margin: 0 auto 12px;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
