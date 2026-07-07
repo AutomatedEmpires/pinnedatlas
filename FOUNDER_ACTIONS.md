@@ -35,10 +35,13 @@ left to do here.
       → copy signing secret → `STRIPE_WEBHOOK_SECRET`.
 - [ ] Enable the Customer Portal (Settings → Billing → Customer portal).
 
-## 4. Mapbox (unblocks the interactive map — until then the app auto-falls back to list browsing)
-- [ ] Get a public token (pk.…) at https://account.mapbox.com/access-tokens/
-      (or reuse the org token already used by Explore & Earn — same spine).
-- [ ] → `NEXT_PUBLIC_MAPBOX_TOKEN`. Recommended: URL-restrict it to the production domain.
+## 4. Map — ✅ WORKING (no action required)
+The interactive map is live now using MapLibre GL + free CARTO dark vector tiles
+(no token needed). The home screen lands directly on the map with a Zillow-style
+listing panel synced to the viewport. Mapbox is now **optional**: if you later
+want Mapbox's specific styling/tiles, get a `pk.…` token and we swap the one
+`STYLE_URL` constant in `components/map-explorer.tsx` (plus a token transform).
+Not launch-blocking.
 
 ## 5. Observability (recommended, not launch-blocking)
 - [ ] PostHog: create project "pinnedatlas" (or reuse org project) →

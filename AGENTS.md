@@ -62,6 +62,7 @@ Shared across the AutomatedEmpires venture portfolio (Sweepza, Explore & Earn, e
 
 ## Repo-Specific Additions
 - Read `FABLE5_BUILD_BRIEF.md` before writing any code. It is the current build mandate.
+- **Map runtime (dated decision 2026-07-07):** the org spine names Mapbox, but the map is founder-mandated to be the landing experience and cannot be gated on a founder-provided token. Runtime uses **MapLibre GL JS + free CARTO dark vector tiles** (no token) by default, giving a working map-first product immediately. Mapbox remains an optional upgrade (swap `STYLE_URL` in `components/map-explorer.tsx` + add a token transform). Attribution (OSM + CARTO) renders via the map's attribution control.
 - One canonical `location` object drives map pin, detail page, search, submission, and moderation. Never fork parallel location models for seeded vs. user-submitted data.
 - User-specific state (saved/favorited, visited, personal notes) lives in `user_location_state`, never on `location`.
 - Controlled values (`feature_type`, `difficulty_tier`, `access_type`, `moderation_status`, report reason) come from enums/dictionaries — no free text for these fields.

@@ -15,7 +15,17 @@ body {
   @apply bg-surface text-stone-100 antialiased;
 }
 
-/* Mapbox controls: keep them legible on the dark theme */
-.mapboxgl-ctrl-attrib {
+/* MapLibre attribution: keep it small and legible on the dark theme */
+.maplibregl-ctrl-attrib {
   font-size: 10px;
+}
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-attrib a {
+  color: #78716c; /* stone-500 */
+}
+/* Respect reduced-motion for the geolocate pulse and any control transitions */
+@media (prefers-reduced-motion: reduce) {
+  .maplibregl-user-location-dot::before {
+    animation: none;
+  }
 }
