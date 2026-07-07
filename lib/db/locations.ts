@@ -39,11 +39,22 @@ function applyFilters(query: any, filters: LocationFilters) {
 export async function listLocations(filters: LocationFilters = {}): Promise<LocationRecord[]> {
   const db = getServiceClient();
   if (!db) return [];
-  const { data, error } = await applyFilters(db.from('location').select('*'), filters)
-    .order('name')
-    .limit(filters.limit ?? 5000);
-  if (error) throw new Error(`listLocations: ${error.message}`);
-  return (data ?? []) as LocationRecord[];
+  // PostgREST caps a single response at 1000 rows, so page with .range() until
+  // the requested limit (default 10k) or the result set is exhausted.
+  const limit = filters.limit ?? 10000;
+  const pageSize = 1000;
+  const rows: LocationRecord[] = [];
+  for (let start = 0; start < limit; start += pageSize) {
+    const end = Math.min(start + pageSize, limit) - 1;
+    const { data, error } = await applyFilters(db.from('location').select('*'), filters)
+      .order('name')
+      .range(start, end);
+    if (error) throw new Error(`listLocations: ${error.message}`);
+    const batch = (data ?? []) as LocationRecord[];
+    rows.push(...batch);
+    if (batch.length < end - start + 1) break;
+  }
+  return rows;
 }
 
 export async function getLocationBySlug(slug: string): Promise<LocationRecord | null> {
