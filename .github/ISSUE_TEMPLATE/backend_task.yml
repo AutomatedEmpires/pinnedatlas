@@ -1,0 +1,53 @@
+name: Backend Task
+description: Request database, API, service, or worker work.
+title: "[backend] <area>: <summary>"
+labels:
+  - status:ready
+body:
+  - type: input
+    id: area
+    attributes:
+      label: Area
+      placeholder: database | api | worker | integration
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Source of truth
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: Requested change
+    validations:
+      required: true
+  - type: textarea
+    id: data-impact
+    attributes:
+      label: Data or integration impact
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification commands
+      render: bash
+    validations:
+      required: true
+  - type: dropdown
+    id: approval
+    attributes:
+      label: Founder approval required?
+      options:
+        - No
+        - Yes
+    validations:
+      required: true
