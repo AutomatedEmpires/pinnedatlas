@@ -16,5 +16,19 @@ via Doppler. Same integration spine as the rest of the AutomatedEmpires venture 
 
 ## Getting started
 
-See `.env.example` for required environment variables. Local setup instructions land alongside
-the initial app scaffold — see `FABLE5_BUILD_BRIEF.md` for build status.
+```bash
+nvm use            # Node 24.16.0
+pnpm install
+cp .env.example .env.local   # fill in what you have — every integration degrades gracefully
+pnpm dev
+```
+
+- `pnpm validate` — lint + typecheck + tests + build (what CI runs).
+- `pnpm ops:ingest-overpass` — seed real cave/waterfall/hot-spring data from OpenStreetMap
+  (needs Supabase env). See [scripts/README.md](./scripts/README.md).
+- Secrets source of truth is Doppler; sync to Vercel with
+  `./scripts/sync-vercel-env-from-doppler.sh`.
+
+Missing keys never crash the app: without Clerk it runs signed-out-only, without Mapbox the
+map falls back to list browsing, without Stripe checkout reports "payments launching soon",
+without Supabase pages render empty states.
