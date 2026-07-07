@@ -1,0 +1,46 @@
+{
+  "name": "pinnedatlas",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.12.4",
+  "engines": {
+    "node": "24.16.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "validate": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "ops:ingest-overpass": "node scripts/ingest-overpass.mjs",
+    "ops:ingest-gnis": "node scripts/ingest-gnis.mjs",
+    "ops:generate-icons": "node scripts/generate-icons.mjs"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^7.4.3",
+    "@phosphor-icons/react": "^2.1.10",
+    "@supabase/supabase-js": "^2.45.4",
+    "mapbox-gl": "^3.8.0",
+    "next": "^15.1.0",
+    "posthog-js": "^1.398.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "stripe": "^22.2.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^15.1.0",
+    "postcss": "^8.5.10",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.10"
+  }
+}

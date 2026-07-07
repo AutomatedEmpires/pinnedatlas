@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-surface text-stone-100 antialiased;
+}
+
+/* Mapbox controls: keep them legible on the dark theme */
+.mapboxgl-ctrl-attrib {
+  font-size: 10px;
+}
