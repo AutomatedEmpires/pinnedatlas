@@ -92,17 +92,25 @@ only when you want to turn on monetization.
 
 ---
 
+## Shipped 2026-07-08 (best-in-class pass)
+- **Real photos + descriptions** — `scripts/enrich-osm.mjs` pulled ~217
+  Creative-Commons Wikimedia photos (with artist + license attribution) and ~353
+  descriptions onto notable waterfalls/caves/hot-springs; they render in the
+  detail-page gallery now. Re-runnable per state (`--states=CO`); idempotent.
+- **SEO + browse hubs** — `/explore`, `/explore/{type}`, `/explore/{type}/{state}`
+  (69 URLs, in the sitemap) capture "waterfalls in colorado"-style searches and
+  give a browse-by-region path.
+- **Perf** — Atlas Guide + detail mini-map now lazy-load (detail first-load JS
+  412kB → 141kB).
+
 ## Recommended next iteration (engineering, not founder-gated)
-- **Photos** — the detail page already renders a photo gallery from `location_media`
-  (empty today). Two feeds: (1) enrich named waterfalls/caves/hot-springs with
-  Creative-Commons images via OSM `wikidata`/`wikimedia_commons` tags + Wikimedia
-  (CSP + `next/image` already allow `upload/commons.wikimedia.org`); (2) let
-  signed-in users upload photos via Cloudinary (needs Clerk + Cloudinary keys).
-- **Data accuracy** — a cleanup pass on OSM names (some carry literal quotes/odd
-  characters), dedupe near-identical points, and enrich empty descriptions from
-  Wikidata/Wikipedia where an OSM `wikidata` tag exists.
-- **Perf** — lazy-load the Atlas Guide bundle and the detail-page mini-map on
-  interaction/scroll to trim first-load JS on those routes.
+- **More photos** — extend enrichment to springs and to `image=` URLs on other
+  hosts (would need those hosts added to the CSP), and add **user photo upload**
+  via Cloudinary (needs Clerk + Cloudinary keys) so the community can contribute.
+- **Data accuracy** — clean OSM names that carry literal quotes/odd characters and
+  dedupe near-identical points.
+- **Offline** — a service worker / installable-PWA offline mode is the main
+  competitor feature still missing (larger effort).
 
 ## Notes
 - Resend is scaffolded in `.env.example` but unused (transactional email is a
