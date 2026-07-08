@@ -7,6 +7,17 @@ const nextConfig = {
       { protocol: 'https', hostname: 'upload.wikimedia.org' },
     ],
   },
+  // Canonicalize www -> apex so there is a single indexable origin.
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.pinnedatlas.com' }],
+        destination: 'https://pinnedatlas.com/:path*',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

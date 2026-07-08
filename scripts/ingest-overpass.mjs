@@ -38,6 +38,7 @@ function buildQuery(state) {
     '  nwr[natural=cave_entrance](area.a);',
     '  nwr[waterway=waterfall](area.a);',
     '  nwr[natural=hot_spring](area.a);',
+    '  nwr[natural=spring](area.a);',
     ');',
     'out center;',
   ].join('\n');
@@ -75,8 +76,11 @@ async function fetchOverpass(query, state) {
 
 function featureTypeFor(tags) {
   if (tags.natural === 'cave_entrance') return 'cave';
-  if (tags.natural === 'hot_spring') return 'hot_spring';
+  // A spring tagged hot (natural=spring + hot_spring=yes, or natural=hot_spring)
+  // is classified as a hot spring; all other springs are plain springs.
+  if (tags.natural === 'hot_spring' || tags.hot_spring === 'yes') return 'hot_spring';
   if (tags.waterway === 'waterfall') return 'waterfall';
+  if (tags.natural === 'spring') return 'spring';
   return null;
 }
 

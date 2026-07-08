@@ -23,6 +23,7 @@ import {
   type ModerationStatus,
 } from '@/lib/types';
 import { Icon } from '@/components/icon';
+import { captureEvent } from '@/app/providers';
 
 const STYLE_URL = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 const SOURCE_ID = 'locations';
@@ -71,6 +72,7 @@ export function MapExplorer() {
   const allSpotsRef = useRef<Spot[]>([]);
   const rawRef = useRef<FeatureCollection>({ type: 'FeatureCollection', features: [] });
   const fetchSeqRef = useRef(0);
+  const vpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [visible, setVisible] = useState<Spot[]>([]);
   const [total, setTotal] = useState(0);
@@ -86,7 +88,12 @@ export function MapExplorer() {
 
   // Debounce the search box so we don't refetch on every keystroke.
   useEffect(() => {
-    const t = setTimeout(() => setQuery(queryInput.trim()), 350);
+    const t = setTimeout(() => {
+      const q = queryInput.trim();
+      setQuery(q);
+      // Product analytics only: length, never the raw term or any location.
+      if (q) captureEvent('search_used', { length: q.length });
+    }, 350);
     return () => clearTimeout(t);
   }, [queryInput]);
 
@@ -112,6 +119,13 @@ export function MapExplorer() {
     );
     setTotal(inBounds.length);
     setVisible(inBounds.slice(0, LIST_CAP));
+
+    // Debounced viewport telemetry: zoom + result count only, no coordinates.
+    if (vpTimerRef.current) clearTimeout(vpTimerRef.current);
+    const count = inBounds.length;
+    vpTimerRef.current = setTimeout(() => {
+      captureEvent('viewport_changed', { zoom: Math.round(map.getZoom() * 10) / 10, results: count });
+    }, 1000);
   }, []);
 
   // Initialize the map once.
@@ -214,8 +228,13 @@ export function MapExplorer() {
       });
 
       map.on('click', 'unclustered-point', (e) => {
-        const slug = e.features?.[0]?.properties?.slug as string | undefined;
-        if (slug) router.push(`/location/${slug}`);
+        const props = e.features?.[0]?.properties as
+          | { slug?: string; feature_type?: string }
+          | undefined;
+        if (props?.slug) {
+          captureEvent('spot_opened', { via: 'map', feature_type: props.feature_type });
+          router.push(`/location/${props.slug}`);
+        }
       });
 
       for (const layer of ['clusters', 'unclustered-point']) {
@@ -228,6 +247,7 @@ export function MapExplorer() {
       loadedRef.current = true;
       (map.getSource(SOURCE_ID) as GeoJSONSource | undefined)?.setData(rawRef.current);
       recomputeVisible();
+      captureEvent('map_opened');
     });
 
     return () => {
@@ -293,6 +313,7 @@ export function MapExplorer() {
       const next = new Set(prev);
       if (next.has(t)) next.delete(t);
       else next.add(t);
+      captureEvent('filter_applied', { type: t, active: next.has(t) });
       return next;
     });
   }
@@ -330,6 +351,7 @@ export function MapExplorer() {
               <li key={s.slug} className="border-b border-stone-800/70">
                 <Link
                   href={`/location/${s.slug}`}
+                  onClick={() => captureEvent('spot_opened', { via: 'list', feature_type: s.feature_type })}
                   onMouseEnter={() => setHovered(s.slug)}
                   onMouseLeave={() => setHovered((h) => (h === s.slug ? null : h))}
                   onFocus={() => setHovered(s.slug)}
@@ -423,7 +445,10 @@ export function MapExplorer() {
         {/* Mobile: toggle to the listing panel */}
         <button
           type="button"
-          onClick={() => setMobileView('list')}
+          onClick={() => {
+            captureEvent('list_opened_mobile', { results: total });
+            setMobileView('list');
+          }}
           className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-stone-950 shadow-lg lg:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <Icon name="list" size={18} />
