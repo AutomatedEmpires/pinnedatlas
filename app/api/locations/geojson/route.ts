@@ -37,18 +37,23 @@ export async function GET(request: Request) {
   if (q) filters.q = q;
   if (state) filters.state = state;
 
+  // ~1m precision is ample for a pin and trims the payload vs. full float noise.
+  const r5 = (n: number) => Math.round(n * 1e5) / 1e5;
+
   try {
     const locations = await listMapPins(filters);
     const collection = {
       type: 'FeatureCollection' as const,
+      // Properties are intentionally lean — the client reads slug/name/type/
+      // difficulty/moderation/color only. No row id is emitted (unused, and it
+      // would add ~500KB of high-entropy UUIDs across the full dataset).
       features: locations.map((loc) => ({
         type: 'Feature' as const,
         geometry: {
           type: 'Point' as const,
-          coordinates: [loc.lng, loc.lat] as [number, number],
+          coordinates: [r5(loc.lng), r5(loc.lat)] as [number, number],
         },
         properties: {
-          id: loc.id,
           slug: loc.slug,
           name: loc.name,
           feature_type: loc.feature_type,
