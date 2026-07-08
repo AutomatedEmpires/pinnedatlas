@@ -27,6 +27,13 @@ Doppler project `pinnedatlas` config `prd` and run
   `filter_applied`, `search_used`, `list_opened_mobile`, `spot_opened`) are wired
   and privacy-conscious (zoom + counts only, never coordinates). They start
   flowing the moment a PostHog key is set (see below).
+- **Experience pass (2026-07-08, live + browser-verified)** — intelligent detail
+  pages (what to expect, best time, effort, what to bring, good to know,
+  type-specific safety, nearby spots, locator mini-map, TouristAttraction
+  JSON-LD, photo-gallery-ready); `/spots` discovery filters (type / difficulty /
+  verified / state) + Name/Nearest sort with geolocation + distance; Atlas Guide
+  AI assistant (built, dormant — see A2); security hardening (CSP + full header
+  set, rate limiting on all write + AI endpoints).
 
 ---
 
@@ -40,6 +47,14 @@ The instrumentation is built; it just needs a destination project.
 - [ ] Set `NEXT_PUBLIC_POSTHOG_KEY` (the project's `phc_…` token) and
       `NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com` → redeploy. Events verify
       immediately.
+
+### A2. Atlas Guide AI assistant — OPTIONAL (marquee feature, built + dormant)
+The in-app AI guide ("Atlas Guide", the compass button) is fully built and
+grounded in the live location database — it just needs a model key. Without one
+it shows a friendly "coming online soon" message (verified live).
+- [ ] Set `ANTHROPIC_API_KEY` (from https://console.anthropic.com) in Vercel →
+      redeploy. `ANTHROPIC_MODEL` defaults to `claude-sonnet-5`; override if desired.
+      Rate-limited server-side (20 req/min/IP). Watch spend in the Anthropic console.
 
 ### B. Error monitoring — OPTIONAL (recommended)
 - [ ] Sentry is not installed and its connector needs interactive OAuth (not
@@ -77,9 +92,21 @@ only when you want to turn on monetization.
 
 ---
 
+## Recommended next iteration (engineering, not founder-gated)
+- **Photos** — the detail page already renders a photo gallery from `location_media`
+  (empty today). Two feeds: (1) enrich named waterfalls/caves/hot-springs with
+  Creative-Commons images via OSM `wikidata`/`wikimedia_commons` tags + Wikimedia
+  (CSP + `next/image` already allow `upload/commons.wikimedia.org`); (2) let
+  signed-in users upload photos via Cloudinary (needs Clerk + Cloudinary keys).
+- **Data accuracy** — a cleanup pass on OSM names (some carry literal quotes/odd
+  characters), dedupe near-identical points, and enrich empty descriptions from
+  Wikidata/Wikipedia where an OSM `wikidata` tag exists.
+- **Perf** — lazy-load the Atlas Guide bundle and the detail-page mini-map on
+  interaction/scroll to trim first-load JS on those routes.
+
 ## Notes
-- Cloudinary + Resend are scaffolded in `.env.example` but unused (photo upload +
-  email are the next iteration).
+- Resend is scaffolded in `.env.example` but unused (transactional email is a
+  future iteration).
 - OSM (ODbL) + CARTO attribution obligations are satisfied: OSM/USGS/NPS/Wikidata
   credited at `/about`, and the map's attribution control shows OSM + CARTO.
 - Supabase advisory: `public.spatial_ref_sys` (a PostGIS system table) reports RLS
