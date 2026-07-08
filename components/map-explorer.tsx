@@ -137,7 +137,13 @@ export function MapExplorer() {
       style: STYLE_URL,
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
-      attributionControl: { compact: true },
+      // The CARTO style ships no attribution string; OSM (ODbL) and CARTO both
+      // require visible on-map credit, so we supply it explicitly.
+      attributionControl: {
+        compact: true,
+        customAttribution:
+          '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a> contributors, <a href="https://carto.com/attributions" target="_blank" rel="noopener">© CARTO</a>',
+      },
     });
     mapRef.current = map;
 

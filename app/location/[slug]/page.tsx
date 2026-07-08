@@ -40,12 +40,16 @@ export async function generateMetadata({
       location.state_code ? ` in ${location.state_code}` : ''
     } — coordinates, difficulty, access notes, and current conditions on PinnedAtlas.`;
 
+  const canonical = `/location/${location.slug}`;
   return {
     title: location.name,
     description,
+    alternates: { canonical },
     openGraph: {
       title: location.name,
       description,
+      url: canonical,
+      type: 'article',
     },
   };
 }
