@@ -4,6 +4,7 @@ import { requireUserId, UnauthorizedError } from '@/lib/auth';
 import { hasSupabase } from '@/lib/env';
 import { getServiceClient } from '@/lib/db/client';
 import { insertSubmission } from '@/lib/db/locations';
+import { clientKey, rateLimit, tooManyRequests } from '@/lib/rate-limit';
 import { slugify } from '@/lib/geo';
 import {
   ACCESS_LABELS,
@@ -36,6 +37,9 @@ function isDuplicateSlugError(err: unknown): boolean {
 
 export async function POST(req: Request) {
   try {
+    const rl = rateLimit(clientKey(req, 'submit'), 10, 60_000);
+    if (!rl.ok) return tooManyRequests(rl.retryAfter);
+
     const userId = await requireUserId();
 
     if (!hasSupabase) {

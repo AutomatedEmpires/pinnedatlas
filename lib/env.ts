@@ -13,6 +13,8 @@ export const env = {
   stripePriceLifetime: process.env.STRIPE_PRICE_ID_LIFETIME ?? '',
   posthogKey: process.env.NEXT_PUBLIC_POSTHOG_KEY ?? '',
   posthogHost: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com',
+  anthropicKey: process.env.ANTHROPIC_API_KEY ?? '',
+  anthropicModel: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5',
   adminUserIds: (process.env.ADMIN_USER_IDS ?? '')
     .split(',')
     .map((s) => s.trim())
@@ -25,3 +27,4 @@ export const hasClerk = Boolean(
 );
 export const hasStripe = Boolean(env.stripeSecretKey);
 export const hasPostHog = Boolean(env.posthogKey);
+export const hasAnthropic = Boolean(env.anthropicKey);

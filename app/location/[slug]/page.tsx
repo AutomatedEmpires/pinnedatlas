@@ -2,14 +2,21 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Icon } from '@/components/icon';
+import { GuidancePanel } from '@/components/location/guidance-panel';
+import { LocationJsonLd } from '@/components/location/location-jsonld';
+import { MiniMap } from '@/components/location/mini-map';
+import { NearbySpots } from '@/components/location/nearby-spots';
+import { PhotoGallery } from '@/components/location/photo-gallery';
 import { ReportForm } from '@/components/report-form';
 import { ReportList } from '@/components/report-list';
 import { SafetyNotice, DEFAULT_SAFETY_COPY } from '@/components/safety-notice';
 import { SaveButton } from '@/components/save-button';
 import { getUserId } from '@/lib/auth';
 import { getEntitlement, type Entitlement } from '@/lib/billing/entitlements';
-import { getLocationBySlug, listReportsForLocation } from '@/lib/db/locations';
+import { getLocationBySlug, listReportsForLocation, locationsNear } from '@/lib/db/locations';
+import { listMediaForLocation } from '@/lib/db/media';
 import { getStatesForUser } from '@/lib/db/user-state';
+import { getGuidance } from '@/lib/guidance';
 import { directionsUrl, formatCoords, timeAgo } from '@/lib/geo';
 import {
   ACCESS_LABELS,
@@ -18,12 +25,14 @@ import {
   FEATURE_TYPE_LABELS,
   MODERATION_LABELS,
   SOURCE_LABELS,
+  type LocationRecord,
   type UserLocationState,
 } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 const BADGE = 'rounded bg-stone-800/80 px-1.5 py-0.5 text-stone-300';
+const SECTION_HEADING = 'text-xs font-semibold uppercase tracking-wide text-stone-500';
 
 export async function generateMetadata({
   params,
@@ -54,6 +63,28 @@ export async function generateMetadata({
   };
 }
 
+type NearRow = LocationRecord & { distance_m: number };
+
+interface NearbyShape {
+  slug: string;
+  name: string;
+  feature_type: LocationRecord['feature_type'];
+  difficulty_tier: LocationRecord['difficulty_tier'];
+  distance_m: number;
+}
+
+function toNearby(rows: NearRow[], excludeId: string, excludeSlug: string): NearbyShape[] {
+  return rows
+    .filter((r) => r.id !== excludeId && r.slug !== excludeSlug)
+    .map((r) => ({
+      slug: r.slug,
+      name: r.name,
+      feature_type: r.feature_type,
+      difficulty_tier: r.difficulty_tier,
+      distance_m: r.distance_m,
+    }));
+}
+
 export default async function LocationPage({
   params,
 }: {
@@ -63,8 +94,10 @@ export default async function LocationPage({
   const location = await getLocationBySlug(slug);
   if (!location) notFound();
 
-  const [reports, userId] = await Promise.all([
+  const [reports, nearRaw, media, userId] = await Promise.all([
     listReportsForLocation(location.id),
+    locationsNear(location.lat, location.lng, 40000, 8),
+    listMediaForLocation(location.id),
     getUserId(),
   ]);
 
@@ -79,9 +112,37 @@ export default async function LocationPage({
     entitlement = ent;
   }
 
+  // Prefer close-by spots; widen the search only when the immediate area is thin.
+  let nearby = toNearby(nearRaw, location.id, location.slug).slice(0, 6);
+  if (nearby.length < 3) {
+    const wider = await locationsNear(location.lat, location.lng, 150000, 8);
+    nearby = toNearby(wider, location.id, location.slug).slice(0, 6);
+  }
+
   const isSignedIn = Boolean(userId);
   const color = FEATURE_TYPE_COLORS[location.feature_type];
   const verified = location.moderation_status === 'verified';
+  const guidance = getGuidance(location);
+
+  const facts: { label: string; value: string; mono?: boolean }[] = [
+    { label: 'Type', value: FEATURE_TYPE_LABELS[location.feature_type] },
+    { label: 'Difficulty', value: DIFFICULTY_LABELS[location.difficulty_tier] },
+    { label: 'Effort', value: guidance.effort.label },
+    { label: 'Best time', value: guidance.bestTime.label },
+  ];
+  if (location.elevation_m !== null) {
+    facts.push({
+      label: 'Elevation',
+      value: `${location.elevation_m.toLocaleString()} m · ${Math.round(
+        location.elevation_m * 3.28084,
+      ).toLocaleString()} ft`,
+    });
+  }
+  facts.push({
+    label: 'Coordinates',
+    value: formatCoords(location.lat, location.lng),
+    mono: true,
+  });
 
   return (
     <div className="mx-auto w-full max-w-shell px-4 py-4">
@@ -94,7 +155,7 @@ export default async function LocationPage({
       </Link>
 
       <header
-        className="mt-2 rounded-xl bg-surface-raised p-5"
+        className="mt-2 overflow-hidden rounded-xl bg-surface-raised p-5"
         // 33 = 20% alpha; type-colored wash fading into the raised surface.
         style={{ backgroundImage: `linear-gradient(150deg, ${color}33, transparent 70%)` }}
       >
@@ -113,7 +174,11 @@ export default async function LocationPage({
               verified ? 'bg-emerald-500/10 text-emerald-400' : 'bg-stone-800/80 text-stone-400'
             }`}
           >
-            <Icon name={verified ? 'verified' : 'community'} size={12} weight={verified ? 'fill' : 'regular'} />
+            <Icon
+              name={verified ? 'verified' : 'community'}
+              size={12}
+              weight={verified ? 'fill' : 'regular'}
+            />
             {MODERATION_LABELS[location.moderation_status]}
           </span>
           {location.state_code && <span className={BADGE}>{location.state_code}</span>}
@@ -121,85 +186,95 @@ export default async function LocationPage({
       </header>
 
       <div className="mt-4 space-y-6">
-        {/* Safety guidance is always shown in full — never behind the paywall. */}
-        <SafetyNotice>
-          <p>{DEFAULT_SAFETY_COPY}</p>
-          {location.hazard_notes && (
-            <p className="mt-2 font-medium text-amber-200">{location.hazard_notes}</p>
-          )}
-          <p className="mt-2">{ACCESS_LABELS[location.access_type]}</p>
-        </SafetyNotice>
+        <PhotoGallery media={media} name={location.name} />
 
-        {location.description && (
-          <section aria-label="Description">
-            <p className="text-sm leading-relaxed text-stone-300">{location.description}</p>
-          </section>
-        )}
-
-        {(location.elevation_m !== null ||
-          location.season_notes ||
-          location.difficulty_notes) && (
-          <section>
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-              Details
-            </h2>
-            <dl className="mt-2 grid grid-cols-1 gap-3 rounded-xl bg-surface-raised p-4 text-sm">
-              {location.elevation_m !== null && (
-                <div>
-                  <dt className="text-xs text-stone-500">Elevation</dt>
-                  <dd className="mt-0.5 text-stone-200">
-                    {location.elevation_m.toLocaleString()} m (
-                    {Math.round(location.elevation_m * 3.28084).toLocaleString()} ft)
-                  </dd>
-                </div>
-              )}
-              {location.season_notes && (
-                <div>
-                  <dt className="text-xs text-stone-500">Season</dt>
-                  <dd className="mt-0.5 text-stone-200">{location.season_notes}</dd>
-                </div>
-              )}
-              {location.difficulty_notes && (
-                <div>
-                  <dt className="text-xs text-stone-500">Difficulty</dt>
-                  <dd className="mt-0.5 text-stone-200">{location.difficulty_notes}</dd>
-                </div>
-              )}
-            </dl>
-          </section>
-        )}
-
-        <section aria-label="Coordinates" className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-              Coordinates
-            </h2>
-            <p className="mt-0.5 font-mono text-sm text-stone-200">
-              {formatCoords(location.lat, location.lng)}
-            </p>
-          </div>
+        {/* Primary actions: the two things a visitor is most likely to want. */}
+        <div className="flex flex-wrap items-center gap-3">
           <a
             href={directionsUrl(location.lat, location.lng)}
             target="_blank"
             rel="noopener"
-            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-stone-950 transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-accent px-5 text-sm font-semibold text-stone-950 transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:flex-none"
           >
             <Icon name="directions" size={18} />
             Directions
           </a>
+          <SaveButton
+            locationId={location.id}
+            initialSaved={Boolean(userState?.saved)}
+            isSignedIn={isSignedIn}
+          />
+        </div>
+
+        <section aria-label="What to expect">
+          <h2 className={SECTION_HEADING}>What to expect</h2>
+          <p className="mt-2 text-sm leading-relaxed text-stone-300">{guidance.whatToExpect}</p>
         </section>
 
-        <SaveButton
-          locationId={location.id}
-          initialSaved={Boolean(userState?.saved)}
-          isSignedIn={isSignedIn}
-        />
+        {location.description && (
+          <section aria-label="About this spot">
+            <h2 className={SECTION_HEADING}>About this spot</h2>
+            <p className="mt-2 rounded-xl bg-surface-raised p-4 text-sm leading-relaxed text-stone-300">
+              {location.description}
+            </p>
+            <p className="mt-1.5 text-xs text-stone-500">From {SOURCE_LABELS[location.source]}</p>
+          </section>
+        )}
+
+        <section aria-label="Key facts">
+          <h2 className={SECTION_HEADING}>Key facts</h2>
+          <dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {facts.map((f) => (
+              <div key={f.label} className="rounded-xl bg-surface-raised p-3">
+                <dt className="text-xs text-stone-500">{f.label}</dt>
+                <dd
+                  className={`mt-0.5 text-sm text-stone-100 ${f.mono ? 'font-mono' : 'font-medium'}`}
+                >
+                  {f.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
+        <section aria-label="Where it is">
+          <h2 className={SECTION_HEADING}>Where it is</h2>
+          <div className="mt-3">
+            <MiniMap lat={location.lat} lng={location.lng} color={color} name={location.name} />
+          </div>
+        </section>
+
+        <GuidancePanel guidance={guidance} featureType={location.feature_type} />
+
+        {/* Safety guidance is always shown in full — never behind the paywall. */}
+        <section aria-label="Safety" className="space-y-3">
+          <h2 className={SECTION_HEADING}>Safety</h2>
+          <SafetyNotice>
+            <p>{DEFAULT_SAFETY_COPY}</p>
+          </SafetyNotice>
+          {guidance.safety.length > 0 && (
+            <ul className="space-y-2">
+              {guidance.safety.map((item) => (
+                <li key={item} className="flex gap-2 text-sm leading-relaxed text-stone-300">
+                  <Icon name="warning" size={16} className="mt-0.5 shrink-0 text-amber-400/80" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {location.hazard_notes && (
+            <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm font-medium text-amber-200">
+              {location.hazard_notes}
+            </p>
+          )}
+          <p className="text-sm text-stone-400">{ACCESS_LABELS[location.access_type]}</p>
+        </section>
+
+        <NearbySpots spots={nearby} />
 
         {entitlement?.isPremium && userState?.personal_note && (
-          <section>
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-              Your note
-            </h2>
+          <section aria-label="Your note">
+            <h2 className={SECTION_HEADING}>Your note</h2>
             <p className="mt-2 rounded-xl bg-surface-raised p-4 text-sm leading-relaxed text-stone-300">
               {userState.personal_note}
             </p>
@@ -211,9 +286,7 @@ export default async function LocationPage({
         </p>
 
         <section aria-label="Latest conditions">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-            Latest conditions
-          </h2>
+          <h2 className={SECTION_HEADING}>Latest conditions</h2>
           <div className="mt-3">
             <ReportList reports={reports} />
           </div>
@@ -222,6 +295,8 @@ export default async function LocationPage({
           </div>
         </section>
       </div>
+
+      <LocationJsonLd location={location} />
     </div>
   );
 }

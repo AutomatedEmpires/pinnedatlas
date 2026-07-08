@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireUserId, UnauthorizedError } from '@/lib/auth';
 import { getEntitlement, type Entitlement } from '@/lib/billing/entitlements';
 import { countSaves, getStatesForUser, upsertState } from '@/lib/db/user-state';
+import { clientKey, rateLimit, tooManyRequests } from '@/lib/rate-limit';
 
 export async function GET() {
   try {
@@ -26,6 +27,9 @@ const bodySchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const rl = rateLimit(clientKey(request, 'user-state'), 60, 60_000);
+    if (!rl.ok) return tooManyRequests(rl.retryAfter);
+
     const userId = await requireUserId();
 
     const json = await request.json().catch(() => null);
