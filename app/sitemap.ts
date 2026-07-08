@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { env, hasSupabase } from '@/lib/env';
-import { listLocations } from '@/lib/db/locations';
+import { listLocationSlugs } from '@/lib/db/locations';
 
 const STATIC_PATHS = ['/', '/spots', '/pricing', '/about', '/legal/terms', '/legal/privacy'];
 
@@ -16,7 +16,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (!hasSupabase) return staticEntries;
 
   try {
-    const locations = await listLocations({ limit: 2000 });
+    // Google allows 50k URLs per sitemap; include every public location so no
+    // detail page is orphaned from crawl discovery.
+    const locations = await listLocationSlugs();
     const locationEntries: MetadataRoute.Sitemap = locations.map((location) => ({
       url: `${base}/location/${location.slug}`,
       lastModified: new Date(location.updated_at),

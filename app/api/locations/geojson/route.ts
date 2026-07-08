@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { listLocations, type LocationFilters } from '@/lib/db/locations';
+import { listMapPins, type LocationFilters } from '@/lib/db/locations';
 import {
   DIFFICULTY_TIERS,
   FEATURE_TYPES,
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
   if (state) filters.state = state;
 
   try {
-    const locations = await listLocations(filters);
+    const locations = await listMapPins(filters);
     const collection = {
       type: 'FeatureCollection' as const,
       features: locations.map((loc) => ({

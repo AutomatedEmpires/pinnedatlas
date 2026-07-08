@@ -57,6 +57,61 @@ export async function listLocations(filters: LocationFilters = {}): Promise<Loca
   return rows;
 }
 
+export type MapPin = Pick<
+  LocationRecord,
+  'id' | 'slug' | 'name' | 'feature_type' | 'difficulty_tier' | 'moderation_status' | 'lat' | 'lng'
+>;
+
+/**
+ * Minimal-column, high-cap location fetch for the map/geojson. Selects only the
+ * fields a pin needs so the full dataset (tens of thousands of rows) stays a
+ * light payload, and pages past the PostgREST 1000-row cap up to `cap`.
+ */
+export async function listMapPins(filters: LocationFilters = {}, cap = 30000): Promise<MapPin[]> {
+  const db = getServiceClient();
+  if (!db) return [];
+  const pageSize = 1000;
+  const rows: MapPin[] = [];
+  for (let start = 0; start < cap; start += pageSize) {
+    const end = Math.min(start + pageSize, cap) - 1;
+    const { data, error } = await applyFilters(
+      db.from('location').select('id,slug,name,feature_type,difficulty_tier,moderation_status,lat,lng'),
+      filters,
+    )
+      .order('id')
+      .range(start, end);
+    if (error) throw new Error(`listMapPins: ${error.message}`);
+    const batch = (data ?? []) as MapPin[];
+    rows.push(...batch);
+    if (batch.length < end - start + 1) break;
+  }
+  return rows;
+}
+
+/** Slug + updated_at for every public location, for the sitemap. */
+export async function listLocationSlugs(
+  cap = 50000,
+): Promise<{ slug: string; updated_at: string }[]> {
+  const db = getServiceClient();
+  if (!db) return [];
+  const pageSize = 1000;
+  const rows: { slug: string; updated_at: string }[] = [];
+  for (let start = 0; start < cap; start += pageSize) {
+    const end = Math.min(start + pageSize, cap) - 1;
+    const { data, error } = await db
+      .from('location')
+      .select('slug,updated_at')
+      .in('moderation_status', PUBLIC_STATUSES)
+      .order('id')
+      .range(start, end);
+    if (error) throw new Error(`listLocationSlugs: ${error.message}`);
+    const batch = (data ?? []) as { slug: string; updated_at: string }[];
+    rows.push(...batch);
+    if (batch.length < end - start + 1) break;
+  }
+  return rows;
+}
+
 export async function getLocationBySlug(slug: string): Promise<LocationRecord | null> {
   const db = getServiceClient();
   if (!db) return null;
