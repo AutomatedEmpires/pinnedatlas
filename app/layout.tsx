@@ -4,6 +4,8 @@ import { hasClerk } from '@/lib/env';
 import { Providers } from '@/app/providers';
 import { SiteNav } from '@/components/site-nav';
 import { AtlasGuideMount } from '@/components/atlas-guide-mount';
+import { ServiceWorkerRegister } from '@/components/sw-register';
+import { OfflineBanner } from '@/components/offline-banner';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -34,11 +36,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <Providers>
+          <OfflineBanner />
           <div className="flex min-h-dvh flex-col">
             <main className="flex-1 pb-16">{children}</main>
             <SiteNav />
           </div>
           <AtlasGuideMount />
+          <ServiceWorkerRegister />
         </Providers>
       </body>
     </html>

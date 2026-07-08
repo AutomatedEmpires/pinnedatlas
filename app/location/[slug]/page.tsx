@@ -11,6 +11,7 @@ import { ReportForm } from '@/components/report-form';
 import { ReportList } from '@/components/report-list';
 import { SafetyNotice, DEFAULT_SAFETY_COPY } from '@/components/safety-notice';
 import { SaveButton } from '@/components/save-button';
+import { SaveOfflineButton } from '@/components/save-offline-button';
 import { getUserId } from '@/lib/auth';
 import { getEntitlement, type Entitlement } from '@/lib/billing/entitlements';
 import { getLocationBySlug, listReportsForLocation, locationsNear } from '@/lib/db/locations';
@@ -203,6 +204,12 @@ export default async function LocationPage({
             locationId={location.id}
             initialSaved={Boolean(userState?.saved)}
             isSignedIn={isSignedIn}
+          />
+          <SaveOfflineButton
+            slug={location.slug}
+            name={location.name}
+            feature_type={location.feature_type}
+            imageUrl={media[0]?.url}
           />
         </div>
 

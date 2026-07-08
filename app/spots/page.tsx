@@ -213,6 +213,9 @@ export default async function SpotsPage({
           <Link href="/explore" className="py-1 hover:text-stone-300">
             Explore
           </Link>
+          <Link href="/downloaded" className="py-1 hover:text-stone-300">
+            Downloaded
+          </Link>
           <Link href="/about" className="py-1 hover:text-stone-300">
             About
           </Link>
