@@ -102,15 +102,22 @@ only when you want to turn on monetization.
   give a browse-by-region path.
 - **Perf** — Atlas Guide + detail mini-map now lazy-load (detail first-load JS
   412kB → 141kB).
+- **Offline / PWA** — installable app with a service worker: previously-viewed
+  spots and map areas work with no signal, plus a no-account "Download for
+  offline" on each spot and a `/downloaded` list. A standalone offline hub lists
+  your downloads when you open an uncached page offline. Browser-verified with the
+  network actually toggled off. (Caveat: offline *photos* don't cache reliably —
+  cross-origin Wikimedia images are opaque to the cache — so offline shows a
+  spot's location, directions, difficulty, and safety, but not its photo.)
 
 ## Recommended next iteration (engineering, not founder-gated)
-- **More photos** — extend enrichment to springs and to `image=` URLs on other
-  hosts (would need those hosts added to the CSP), and add **user photo upload**
+- **Offline photos** — proxy Wikimedia images through a same-origin route (or
+  store them in Supabase Storage / Cloudinary) so the service worker can cache
+  them without the cross-origin-opaque problem.
+- **More photos** — extend enrichment to springs and add **user photo upload**
   via Cloudinary (needs Clerk + Cloudinary keys) so the community can contribute.
 - **Data accuracy** — clean OSM names that carry literal quotes/odd characters and
   dedupe near-identical points.
-- **Offline** — a service worker / installable-PWA offline mode is the main
-  competitor feature still missing (larger effort).
 
 ## Notes
 - Resend is scaffolded in `.env.example` but unused (transactional email is a
