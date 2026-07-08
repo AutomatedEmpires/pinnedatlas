@@ -15,7 +15,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data: https://fonts.openmaptiles.org https://*.cartocdn.com",
   "worker-src 'self' blob:",
-  "connect-src 'self' https://*.cartocdn.com https://basemaps.cartocdn.com https://*.supabase.co https://us.i.posthog.com https://us-assets.i.posthog.com https://fonts.openmaptiles.org",
+  "connect-src 'self' https://*.cartocdn.com https://basemaps.cartocdn.com https://*.supabase.co https://us.i.posthog.com https://us-assets.i.posthog.com https://fonts.openmaptiles.org https://upload.wikimedia.org https://commons.wikimedia.org",
   "manifest-src 'self'",
   'upgrade-insecure-requests',
 ].join('; ');
