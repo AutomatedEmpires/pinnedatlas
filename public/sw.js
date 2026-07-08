@@ -9,7 +9,7 @@
  * fallback below.
  */
 
-const V = 'pa-v1';
+const V = 'pa-v2';
 const SHELL = `${V}-shell`;
 const PAGES = `${V}-pages`;
 const STATIC = `${V}-static`;
@@ -18,8 +18,19 @@ const TILES = `${V}-tiles`;
 const DATA = `${V}-data`;
 const OFFLINE_CACHE = 'pa-offline-spots'; // written by the app's download feature
 
-const OFFLINE_URL = '/offline';
-const PRECACHE = [OFFLINE_URL, '/', '/spots', '/explore', '/manifest.webmanifest'];
+// A standalone, hydration-free HTML hub is the navigation fallback — serving a
+// Next route's HTML for a different URL triggers a hydration mismatch and the
+// app error boundary, so we use plain HTML that also lists downloaded spots.
+const OFFLINE_URL = '/offline.html';
+const PRECACHE = [
+  OFFLINE_URL,
+  '/offline',
+  '/',
+  '/spots',
+  '/explore',
+  '/downloaded',
+  '/manifest.webmanifest',
+];
 
 const LIMITS = { [PAGES]: 60, [IMG]: 150, [TILES]: 600, [DATA]: 20, [STATIC]: 250 };
 
