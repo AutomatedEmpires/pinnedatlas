@@ -154,6 +154,19 @@ export default async function SpotsPage({
         )}
       </header>
 
+      <Link
+        href="/explore"
+        className="mt-4 flex items-center justify-between gap-2 rounded-xl border border-stone-800 bg-surface-raised px-4 py-3 text-sm text-stone-200 transition-colors hover:border-stone-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      >
+        <span className="flex items-center gap-2">
+          <Icon name="compass" size={18} className="text-accent" />
+          Explore by type &amp; region
+        </span>
+        <span aria-hidden className="text-stone-500">
+          →
+        </span>
+      </Link>
+
       {!hasSupabase ? (
         <div className="mt-8 rounded-xl border border-stone-800 bg-surface-raised p-6 text-center">
           <p className="text-sm text-stone-300">
@@ -196,6 +209,9 @@ export default async function SpotsPage({
         >
           <Link href="/" className="py-1 hover:text-stone-300">
             Home
+          </Link>
+          <Link href="/explore" className="py-1 hover:text-stone-300">
+            Explore
           </Link>
           <Link href="/about" className="py-1 hover:text-stone-300">
             About

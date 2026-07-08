@@ -1,8 +1,9 @@
 import type { MetadataRoute } from 'next';
 import { env, hasSupabase } from '@/lib/env';
 import { listLocationSlugs } from '@/lib/db/locations';
+import { hubPaths } from '@/lib/hubs';
 
-const STATIC_PATHS = ['/', '/spots', '/pricing', '/about', '/legal/terms', '/legal/privacy'];
+const STATIC_PATHS = ['/', '/spots', '/explore', '/pricing', '/about', '/legal/terms', '/legal/privacy'];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = env.appUrl.replace(/\/$/, '');
@@ -12,6 +13,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: 'weekly',
     priority: path === '/' ? 1 : 0.7,
   }));
+
+  // SEO hub pages (/explore/{type} and /explore/{type}/{state}) — high-value
+  // landing pages for "waterfalls in colorado"-style searches.
+  const hubEntries: MetadataRoute.Sitemap = hubPaths()
+    .filter((p) => p !== '/explore')
+    .map((path) => ({ url: `${base}${path}`, changeFrequency: 'weekly', priority: 0.8 }));
+  staticEntries.push(...hubEntries);
 
   if (!hasSupabase) return staticEntries;
 

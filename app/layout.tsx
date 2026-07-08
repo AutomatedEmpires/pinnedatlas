@@ -3,7 +3,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { hasClerk } from '@/lib/env';
 import { Providers } from '@/app/providers';
 import { SiteNav } from '@/components/site-nav';
-import { AtlasGuide } from '@/components/atlas-guide';
+import { AtlasGuideMount } from '@/components/atlas-guide-mount';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -38,7 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <main className="flex-1 pb-16">{children}</main>
             <SiteNav />
           </div>
-          <AtlasGuide />
+          <AtlasGuideMount />
         </Providers>
       </body>
     </html>

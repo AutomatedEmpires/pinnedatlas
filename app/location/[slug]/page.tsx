@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { Icon } from '@/components/icon';
 import { GuidancePanel } from '@/components/location/guidance-panel';
 import { LocationJsonLd } from '@/components/location/location-jsonld';
-import { MiniMap } from '@/components/location/mini-map';
+import { MiniMapLazy } from '@/components/location/mini-map-lazy';
 import { NearbySpots } from '@/components/location/nearby-spots';
 import { PhotoGallery } from '@/components/location/photo-gallery';
 import { ReportForm } from '@/components/report-form';
@@ -240,7 +240,7 @@ export default async function LocationPage({
         <section aria-label="Where it is">
           <h2 className={SECTION_HEADING}>Where it is</h2>
           <div className="mt-3">
-            <MiniMap lat={location.lat} lng={location.lng} color={color} name={location.name} />
+            <MiniMapLazy lat={location.lat} lng={location.lng} color={color} name={location.name} />
           </div>
         </section>
 
