@@ -53,18 +53,10 @@ export async function saveForOffline(spot: {
   if (canUseCaches()) {
     try {
       const cache = await caches.open(CACHE);
-      // Same-origin page HTML: cache.add fetches + stores it.
+      // Cache the spot's page (name, location, directions, difficulty, safety,
+      // and guidance) so it opens with no signal. Photos are best-effort via the
+      // service worker's image cache and are not guaranteed offline.
       await cache.add(`/location/${spot.slug}`).catch(() => {});
-      // Cross-origin photos (Wikimedia) don't send CORS headers, so cache.add
-      // fails — fetch no-cors and store the opaque response instead.
-      for (const u of spot.imageUrls ?? []) {
-        try {
-          const res = await fetch(u, { mode: 'no-cors' });
-          await cache.put(u, res);
-        } catch {
-          /* image unavailable — the offline page still works without it */
-        }
-      }
     } catch {
       /* Cache API unavailable — fall back to just the metadata list */
     }
