@@ -15,6 +15,7 @@ export const env = {
   posthogHost: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com',
   anthropicKey: process.env.ANTHROPIC_API_KEY ?? '',
   anthropicModel: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5',
+  cronSecret: process.env.CRON_SECRET ?? '',
   adminUserIds: (process.env.ADMIN_USER_IDS ?? '')
     .split(',')
     .map((s) => s.trim())

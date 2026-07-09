@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/conditions?limit=400",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

@@ -60,7 +60,7 @@ export async function listLocations(filters: LocationFilters = {}): Promise<Loca
 export type MapPin = Pick<
   LocationRecord,
   'id' | 'slug' | 'name' | 'feature_type' | 'difficulty_tier' | 'moderation_status' | 'lat' | 'lng'
->;
+> & { condition_score: number | null; condition_verdict: string | null };
 
 /**
  * Minimal-column, high-cap location fetch for the map/geojson. Selects only the
@@ -75,7 +75,11 @@ export async function listMapPins(filters: LocationFilters = {}, cap = 30000): P
   for (let start = 0; start < cap; start += pageSize) {
     const end = Math.min(start + pageSize, cap) - 1;
     const { data, error } = await applyFilters(
-      db.from('location').select('id,slug,name,feature_type,difficulty_tier,moderation_status,lat,lng'),
+      db
+        .from('location')
+        .select(
+          'id,slug,name,feature_type,difficulty_tier,moderation_status,lat,lng,condition_score,condition_verdict',
+        ),
       filters,
     )
       .order('id')

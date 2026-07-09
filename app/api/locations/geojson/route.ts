@@ -60,6 +60,9 @@ export async function GET(request: Request) {
           difficulty_tier: loc.difficulty_tier,
           moderation_status: loc.moderation_status,
           color: FEATURE_TYPE_COLORS[loc.feature_type],
+          // Live "Right Now" conditions (null until the cron scores this spot).
+          score: loc.condition_score,
+          verdict: loc.condition_verdict,
         },
       })),
     };
