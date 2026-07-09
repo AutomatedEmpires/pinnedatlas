@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { RightNowStrip } from '@/components/conditions/right-now-strip';
 import { Icon } from '@/components/icon';
 import { LocationCard } from '@/components/location-card';
 import { SpotsFilters } from '@/components/spots-filters';
 import { Reveal } from '@/components/reveal';
 import { badgeClass, buttonClass, cardClass } from '@/components/ui';
+import { listTopConditions, type ConditionsLeader } from '@/lib/db/conditions';
 import { listLocations, locationsNear } from '@/lib/db/locations';
 import { hasSupabase } from '@/lib/env';
 import {
@@ -107,6 +109,15 @@ export default async function SpotsPage({
     }
   }
 
+  // Live "what's good today" — highest Go Score waterfalls right now. Never let a
+  // conditions hiccup break the browse page.
+  let flowingNow: ConditionsLeader[] = [];
+  try {
+    flowingNow = await listTopConditions({ types: ['waterfall'], limit: 12 });
+  } catch {
+    flowingNow = [];
+  }
+
   const count = items.length;
   const atLimit = count >= RESULT_LIMIT;
   const countLabel = isNear
@@ -186,6 +197,12 @@ export default async function SpotsPage({
           </>
         )}
       </header>
+
+      {flowingNow.length > 0 && (
+        <Reveal className="mt-8">
+          <RightNowStrip leaders={flowingNow} eyebrow="Conditions" title="Flowing right now" />
+        </Reveal>
+      )}
 
       <Reveal>
         <Link

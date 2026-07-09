@@ -25,6 +25,7 @@ import {
 } from '@/lib/types';
 import { Icon } from '@/components/icon';
 import { cn } from '@/components/ui';
+import { scoreColor, scoreLabel, verdictTone, type ConditionTone } from '@/lib/conditions-ui';
 import { formatDistanceKm, haversineKm } from '@/lib/geo';
 import { captureEvent } from '@/app/providers';
 
@@ -35,6 +36,47 @@ const DEFAULT_CENTER: [number, number] = [-105.5, 39.5]; // US mountain west
 const DEFAULT_ZOOM = 4.2;
 const LIST_CAP = 120; // most panels never need more; count reflects the true total
 
+// Data-driven pin color by Go Score for the "Right Now" mode — mirrors the
+// lib/conditions-ui scoreColor buckets so map, detail, and discovery match.
+// coalesce(null → 0) keeps unscored pins out of the numeric comparisons and
+// lands them on the muted "unrated" stone in the final fallback.
+const SCORE_COLOR_EXPRESSION = [
+  'case',
+  ['>=', ['coalesce', ['get', 'score'], 0], 80],
+  '#34d399', // Prime
+  ['>=', ['coalesce', ['get', 'score'], 0], 64],
+  '#2dd4bf', // Good
+  ['>=', ['coalesce', ['get', 'score'], 0], 46],
+  '#f5b544', // Fair
+  ['>=', ['coalesce', ['get', 'score'], 0], 1],
+  '#a8a29e', // Low
+  '#57534e', // Unrated (null / 0)
+];
+
+// Scored pins pop a touch larger than unrated ones while Right Now is on.
+const SCORE_RADIUS_EXPRESSION = ['case', ['>', ['coalesce', ['get', 'score'], 0], 0], 9, 6];
+
+// Feature-type coloring the pin layer restores when Right Now is off.
+const TYPE_COLOR_EXPRESSION = ['get', 'color'];
+
+// Legend swatches for the Right Now color key (Prime → Unrated).
+const SCORE_LEGEND: ReadonlyArray<{ label: string; color: string }> = [
+  { label: 'Prime', color: '#34d399' },
+  { label: 'Good', color: '#2dd4bf' },
+  { label: 'Fair', color: '#f5b544' },
+  { label: 'Low', color: '#a8a29e' },
+  { label: 'Unrated', color: '#57534e' },
+];
+
+// AA-safe list-chip classes per verdict tone (mirrors components/ui badgeClass).
+const CHIP_TONE_CLASS: Record<ConditionTone, string> = {
+  accent: 'bg-accent/10 text-accent ring-accent/25',
+  teal: 'bg-teal-500/10 text-teal-300 ring-teal-500/25',
+  topaz: 'bg-topaz/10 text-topaz ring-topaz/25',
+  amber: 'bg-amber-500/10 text-amber-300 ring-amber-500/25',
+  neutral: 'bg-white/5 text-stone-300 ring-white/10',
+};
+
 interface Spot {
   slug: string;
   name: string;
@@ -44,6 +86,9 @@ interface Spot {
   color: string;
   lng: number;
   lat: number;
+  // Live "Right Now" conditions carried through from the geojson properties.
+  score: number | null;
+  verdict: string | null;
 }
 
 // A visible spot carries its distance from the current map center, computed at
@@ -68,6 +113,8 @@ function spotsFromCollection(fc: FeatureCollection): Spot[] {
       color: String(p.color ?? '#a8a29e'),
       lng,
       lat,
+      score: typeof p.score === 'number' ? p.score : null,
+      verdict: typeof p.verdict === 'string' ? p.verdict : null,
     });
   }
   return out;
@@ -88,6 +135,8 @@ export function MapExplorer() {
   const [loading, setLoading] = useState(true);
   const [mobileView, setMobileView] = useState<'map' | 'list'>('map');
   const [hovered, setHovered] = useState<string | null>(null);
+  // "Right Now" mode: recolor pins by Go Score + surface what's worth it now.
+  const [rightNow, setRightNow] = useState(false);
 
   // Filter state lives in the component (not the URL) so changing a filter
   // never remounts the map or loses the user's viewport.
@@ -141,6 +190,20 @@ export function MapExplorer() {
       captureEvent('viewport_changed', { zoom: Math.round(map.getZoom() * 10) / 10, results: count });
     }, 1000);
   }, []);
+
+  // Right Now re-sorts the in-view rows by Go Score (nulls last, via -1) so the
+  // best-right-now float up. Off keeps recomputeVisible's distance ordering.
+  // Array.prototype.sort is stable, so equal-score rows retain distance order.
+  const rows = useMemo(() => {
+    if (!rightNow) return visible;
+    return [...visible].sort((a, z) => (z.score ?? -1) - (a.score ?? -1));
+  }, [visible, rightNow]);
+
+  // In-view spots flowing well (Go Score ≥ 64 — Good or better) for the banner.
+  const flowingCount = useMemo(
+    () => visible.reduce((n, s) => n + ((s.score ?? 0) >= 64 ? 1 : 0), 0),
+    [visible],
+  );
 
   // Initialize the map once.
   useEffect(() => {
@@ -328,12 +391,35 @@ export function MapExplorer() {
     });
   }, [hovered]);
 
+  // Repaint the existing pin layer when Right Now toggles — data-driven Go Score
+  // colors + a slightly larger scored radius when on, feature-type colors when
+  // off. Mutates paint on the live layer; never rebuilds the map or source.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current || !map.getLayer('unclustered-point')) return;
+    if (rightNow) {
+      map.setPaintProperty('unclustered-point', 'circle-color', SCORE_COLOR_EXPRESSION);
+      map.setPaintProperty('unclustered-point', 'circle-radius', SCORE_RADIUS_EXPRESSION);
+    } else {
+      map.setPaintProperty('unclustered-point', 'circle-color', TYPE_COLOR_EXPRESSION);
+      map.setPaintProperty('unclustered-point', 'circle-radius', 7);
+    }
+  }, [rightNow]);
+
   function toggleType(t: FeatureType) {
     setTypes((prev) => {
       const next = new Set(prev);
       if (next.has(t)) next.delete(t);
       else next.add(t);
       captureEvent('filter_applied', { type: t, active: next.has(t) });
+      return next;
+    });
+  }
+
+  function toggleRightNow() {
+    setRightNow((on) => {
+      const next = !on;
+      captureEvent('right_now_toggled', { active: next });
       return next;
     });
   }
@@ -377,8 +463,21 @@ export function MapExplorer() {
           </button>
         </div>
 
+        {/* Right Now banner: a punchy, editorial read on what's worth it now. */}
+        {rightNow && (
+          <div className="border-b border-white/8 bg-accent/[0.06] px-4 py-2.5 md:px-5">
+            <p aria-live="polite" className="font-display text-sm font-semibold tracking-tight text-accent">
+              {loading
+                ? 'Reading live conditions…'
+                : flowingCount > 0
+                  ? `${flowingCount} flowing well nearby`
+                  : 'No live scores in view yet.'}
+            </p>
+          </div>
+        )}
+
         <ul className="flex-1 space-y-1 overflow-y-auto overscroll-contain p-2 md:p-2.5">
-          {loading && visible.length === 0 ? (
+          {loading && rows.length === 0 ? (
             Array.from({ length: 7 }).map((_, i) => (
               <li key={i} className="flex items-center gap-3 rounded-xl px-2.5 py-2.5">
                 <span className="h-11 w-11 shrink-0 animate-pulse rounded-xl bg-white/[0.05]" />
@@ -388,7 +487,7 @@ export function MapExplorer() {
                 </span>
               </li>
             ))
-          ) : visible.length === 0 ? (
+          ) : rows.length === 0 ? (
             <li className="flex flex-col items-center gap-3 px-6 py-16 text-center">
               <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.04] text-stone-500 ring-1 ring-inset ring-white/10">
                 <Icon name="compass" size={26} />
@@ -399,9 +498,12 @@ export function MapExplorer() {
               </p>
             </li>
           ) : (
-            visible.map((s) => {
+            rows.map((s) => {
               const active = hovered === s.slug;
               const isVerified = s.moderation_status === 'verified';
+              // Show the Go Score chip when a spot is scored, or always in
+              // Right Now mode (so unrated spots read as an explicit "Unrated").
+              const showScore = s.score != null || rightNow;
               return (
                 <li key={s.slug}>
                   <Link
@@ -443,6 +545,21 @@ export function MapExplorer() {
                           <span className="inline-flex items-center gap-0.5 text-accent">
                             <Icon name="verified" size={12} weight="fill" />
                             Verified
+                          </span>
+                        )}
+                        {showScore && (
+                          <span
+                            className={cn(
+                              'inline-flex items-center gap-1 rounded-full px-1.5 py-[3px] font-semibold ring-1 ring-inset',
+                              CHIP_TONE_CLASS[verdictTone(s.verdict)],
+                            )}
+                          >
+                            <span
+                              aria-hidden
+                              className="h-1.5 w-1.5 rounded-full"
+                              style={{ backgroundColor: scoreColor(s.score) }}
+                            />
+                            {s.verdict ?? scoreLabel(s.score)}
                           </span>
                         )}
                       </span>
@@ -504,37 +621,88 @@ export function MapExplorer() {
             </label>
           </div>
 
-          <div
-            role="group"
-            aria-label="Filter by feature type"
-            className="flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            {FEATURE_TYPES.map((t) => {
-              const active = types.has(t);
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => toggleType(t)}
-                  aria-pressed={active}
+          <div className="flex items-center gap-2">
+            {/* Right Now — the marquee live-conditions toggle. Pinned left of the
+                scrolling filter chips so it stays in reach. Default off; when on,
+                pins recolor by Go Score and the list surfaces what's worth it now. */}
+            <button
+              type="button"
+              onClick={toggleRightNow}
+              aria-pressed={rightNow}
+              aria-label="Right Now — score spots by live conditions"
+              className={cn(
+                'pointer-events-auto inline-flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-sm font-semibold ring-1 ring-inset transition-all duration-200 ease-spring active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+                rightNow
+                  ? 'bg-accent text-stone-950 ring-accent shadow-glow'
+                  : 'glass text-stone-200 ring-white/10 hover:text-stone-100 hover:ring-white/20',
+              )}
+            >
+              <span className="relative flex h-2 w-2" aria-hidden>
+                {rightNow && (
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-stone-950/50" />
+                )}
+                <span
                   className={cn(
-                    'pointer-events-auto inline-flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-sm font-medium ring-1 ring-inset transition-all duration-200 ease-spring active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
-                    active
-                      ? 'bg-accent/15 text-accent ring-accent/60'
-                      : 'glass text-stone-300 ring-white/10 hover:text-stone-100 hover:ring-white/20',
+                    'relative inline-flex h-2 w-2 rounded-full',
+                    rightNow ? 'bg-stone-950' : 'bg-accent',
                   )}
-                >
-                  <span
-                    className="flex"
-                    style={active ? undefined : { color: FEATURE_TYPE_COLORS[t] }}
+                />
+              </span>
+              Right Now
+            </button>
+
+            <div
+              role="group"
+              aria-label="Filter by feature type"
+              className="flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {FEATURE_TYPES.map((t) => {
+                const active = types.has(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => toggleType(t)}
+                    aria-pressed={active}
+                    className={cn(
+                      'pointer-events-auto inline-flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-sm font-medium ring-1 ring-inset transition-all duration-200 ease-spring active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+                      active
+                        ? 'bg-accent/15 text-accent ring-accent/60'
+                        : 'glass text-stone-300 ring-white/10 hover:text-stone-100 hover:ring-white/20',
+                    )}
                   >
-                    <Icon name={t} size={15} weight="fill" />
-                  </span>
-                  {FEATURE_TYPE_LABELS[t]}
-                </button>
-              );
-            })}
+                    <span
+                      className="flex"
+                      style={active ? undefined : { color: FEATURE_TYPE_COLORS[t] }}
+                    >
+                      <Icon name={t} size={15} weight="fill" />
+                    </span>
+                    {FEATURE_TYPE_LABELS[t]}
+                  </button>
+                );
+              })}
+            </div>
           </div>
+
+          {/* Color key for Right Now — a subtle caption tying pin colors to the
+              Go Score verdicts. Informational, so it lets map gestures pass through. */}
+          {rightNow && (
+            <div className="flex">
+              <div className="glass pointer-events-none flex max-w-full flex-wrap items-center gap-x-2.5 gap-y-1 rounded-full px-3 py-1.5 text-[11px] font-medium text-stone-300 shadow-float ring-1 ring-inset ring-white/10">
+                <span className="text-stone-400">Go Score</span>
+                {SCORE_LEGEND.map((l) => (
+                  <span key={l.label} className="inline-flex items-center gap-1">
+                    <span
+                      aria-hidden
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: l.color }}
+                    />
+                    {l.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Mobile: toggle to the listing panel. Bottom-center keeps it clear of

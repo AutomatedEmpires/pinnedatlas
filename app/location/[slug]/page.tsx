@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Icon, type IconName } from '@/components/icon';
+import { ConditionsPanel } from '@/components/location/conditions-panel';
 import { GuidancePanel } from '@/components/location/guidance-panel';
 import { LocationJsonLd } from '@/components/location/location-jsonld';
 import { MiniMapLazy } from '@/components/location/mini-map-lazy';
@@ -21,6 +22,7 @@ import { getEntitlement, type Entitlement } from '@/lib/billing/entitlements';
 import { getLocationBySlug, listReportsForLocation, locationsNear } from '@/lib/db/locations';
 import { listMediaForLocation } from '@/lib/db/media';
 import { getStatesForUser } from '@/lib/db/user-state';
+import { getConditions } from '@/lib/conditions';
 import { getGuidance } from '@/lib/guidance';
 import { directionsUrl, formatCoords, timeAgo } from '@/lib/geo';
 import { getWeather } from '@/lib/weather';
@@ -106,12 +108,13 @@ export default async function LocationPage({
   const location = await getLocationBySlug(slug);
   if (!location) notFound();
 
-  const [reports, nearRaw, media, userId, weather] = await Promise.all([
+  const [reports, nearRaw, media, userId, weather, conditions] = await Promise.all([
     listReportsForLocation(location.id),
     locationsNear(location.lat, location.lng, 40000, 8),
     listMediaForLocation(location.id),
     getUserId(),
     getWeather(location.lat, location.lng),
+    getConditions({ lat: location.lat, lng: location.lng, feature_type: location.feature_type }),
   ]);
 
   let userState: UserLocationState | null = null;
@@ -240,6 +243,12 @@ export default async function LocationPage({
 
       {/* Body */}
       <div className="mx-auto w-full max-w-content px-4 py-8 sm:px-6 sm:py-10 lg:max-w-wide lg:px-8">
+        {/* Live Conditions "Go Score" — the #1 question a visitor has, answered up
+            front as a full-width marquee band before the detail grid. */}
+        <Reveal className="mb-8 lg:mb-10">
+          <ConditionsPanel report={conditions} />
+        </Reveal>
+
         <div className="lg:grid lg:grid-cols-[1fr_20rem] lg:gap-8">
           {/* Intelligence rail — first in DOM so actions/facts/weather sit near the
               top on mobile; pinned to the right column on desktop. */}
