@@ -92,6 +92,18 @@ only when you want to turn on monetization.
 
 ---
 
+## Shipped 2026-07-08 (category-defining: the Conditions Engine)
+- **Live "Go Score" on every waterfall & hot spring** — the atom no competitor
+  owns: an explainable "is it worth going right now?" verdict fusing **real USGS
+  streamflow** (a waterfall's nearest river gauge → % of normal flow), weather,
+  daylight, season, and flood risk. Shows on the detail page (deep, live), the
+  map ("Right Now" toggle recolors pins by score), and `/spots` ("Flowing right
+  now"). Free data (USGS + Open-Meteo), no keys.
+- **Founder note:** an hourly Vercel cron (`/api/cron/conditions`) refreshes the
+  stored map scores; `CRON_SECRET` is already set in Vercel. Nothing to do — but
+  if you ever rotate it, update the Vercel env var. (Vercel's function timeout is
+  tight, so the cron processes a batch per run; scores refresh continuously.)
+
 ## Shipped 2026-07-08 (best-in-class pass)
 - **Real photos + descriptions** — `scripts/enrich-osm.mjs` pulled ~217
   Creative-Commons Wikimedia photos (with artist + license attribution) and ~353
