@@ -18,9 +18,12 @@ export function SiteNav() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-800 bg-surface-raised/95 backdrop-blur"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/8 glass md:hidden"
     >
-      <div className="mx-auto flex max-w-shell items-stretch justify-between">
+      <div
+        className="mx-auto flex max-w-shell items-stretch justify-between"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
         {TABS.map((tab) => {
           const active =
             tab.href === '/' ? pathname === '/' : pathname.startsWith(tab.href);

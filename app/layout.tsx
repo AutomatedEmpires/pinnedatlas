@@ -1,12 +1,24 @@
 import type { Metadata, Viewport } from 'next';
+import { Fraunces, Inter } from 'next/font/google';
 import { ClerkProvider } from '@clerk/nextjs';
 import { hasClerk } from '@/lib/env';
 import { Providers } from '@/app/providers';
 import { SiteNav } from '@/components/site-nav';
+import { TopNav } from '@/components/top-nav';
 import { AtlasGuideMount } from '@/components/atlas-guide-mount';
 import { ServiceWorkerRegister } from '@/components/sw-register';
 import { OfflineBanner } from '@/components/offline-banner';
 import './globals.css';
+
+// Display serif (editorial, "field guide" character) + clean UI sans, both
+// self-hosted by next/font (no external requests — CSP-safe).
+const display = Fraunces({
+  subsets: ['latin'],
+  variable: '--font-display',
+  display: 'swap',
+  axes: ['opsz'],
+});
+const sans = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
 
 export const metadata: Metadata = {
   title: {
@@ -25,7 +37,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0c0a09',
+  themeColor: '#0b0a09',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -33,12 +45,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const shell = (
-    <html lang="en">
+    <html lang="en" className={`${display.variable} ${sans.variable}`}>
       <body>
         <Providers>
           <OfflineBanner />
-          <div className="flex min-h-dvh flex-col">
-            <main className="flex-1 pb-16">{children}</main>
+          {/* Desktop gets a real top nav; mobile keeps the bottom tab bar. */}
+          <TopNav />
+          <div className="flex min-h-dvh flex-col md:pt-14">
+            <main className="flex-1 pb-16 md:pb-0">{children}</main>
             <SiteNav />
           </div>
           <AtlasGuideMount />
