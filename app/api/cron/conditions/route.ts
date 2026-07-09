@@ -36,7 +36,12 @@ export async function GET(req: Request) {
     let failed = 0;
     await mapLimited(spots, 8, async (s) => {
       try {
-        const c = await getConditions({ lat: s.lat, lng: s.lng, feature_type: s.feature_type });
+        // Stored scores power the map/discovery, which are used for planning —
+        // so they ignore time-of-day. The detail page computes 'now' live.
+        const c = await getConditions(
+          { lat: s.lat, lng: s.lng, feature_type: s.feature_type },
+          'planning',
+        );
         if (c) {
           await writeConditions(s.id, {
             score: c.goScore,

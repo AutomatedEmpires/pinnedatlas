@@ -37,6 +37,10 @@ export interface ConditionsInput {
   isDaytime: boolean;
   hoursUntilSunset: number;
   flow: Streamflow | null;
+  // 'now' = the true right-this-minute verdict (used on the detail page).
+  // 'planning' = a durable "is this spot in good shape?" score that ignores
+  // time-of-day, so the map/discovery don't show everything as poor at night.
+  mode?: 'now' | 'planning';
 }
 
 const CLEAR = new Set([0, 1]);
@@ -83,8 +87,10 @@ export function computeConditions(input: ConditionsInput): Omit<ConditionsReport
     score -= 8;
   }
 
-  // --- Daylight ---
-  if (!input.isDaytime) {
+  // --- Daylight (only in "now" mode; planning scores ignore time-of-day) ---
+  if (input.mode === 'planning') {
+    // no daylight adjustment
+  } else if (!input.isDaytime) {
     f.push({ key: 'daylight', label: 'After dark', detail: 'The sun is down — bring lights and take care.', status: 'poor' });
     score -= 25;
     caution = true;
@@ -210,7 +216,8 @@ export function computeConditions(input: ConditionsInput): Omit<ConditionsReport
 }
 
 function buildHeadline(input: ConditionsInput, factors: ConditionFactor[], verdict: Verdict): string {
-  if (!input.isDaytime) return 'Heading out after dark — bring lights and take extra care.';
+  if (input.mode !== 'planning' && !input.isDaytime)
+    return 'Heading out after dark — bring lights and take extra care.';
   const flood = factors.find((x) => x.key === 'flood');
   if (flood) return 'Recent heavy rain — real flash-flood risk. Consider waiting.';
   if (input.feature_type === 'waterfall') {
@@ -239,11 +246,14 @@ function buildHeadline(input: ConditionsInput, factors: ConditionFactor[], verdi
 const OM_URL = 'https://api.open-meteo.com/v1/forecast';
 
 /** Fetch live inputs + score them. Returns null only if weather is unreachable. */
-export async function getConditions(location: {
-  lat: number;
-  lng: number;
-  feature_type: FeatureType;
-}): Promise<ConditionsReport | null> {
+export async function getConditions(
+  location: {
+    lat: number;
+    lng: number;
+    feature_type: FeatureType;
+  },
+  mode: 'now' | 'planning' = 'now',
+): Promise<ConditionsReport | null> {
   const lat = Math.round(location.lat * 100) / 100;
   const lng = Math.round(location.lng * 100) / 100;
   const url =
@@ -293,6 +303,7 @@ export async function getConditions(location: {
     isDaytime,
     hoursUntilSunset,
     flow,
+    mode,
   });
 
   return { ...report, updatedAt: new Date().toISOString() };
