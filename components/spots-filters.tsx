@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { Icon } from '@/components/icon';
+import { cn } from '@/components/ui';
 import {
   DIFFICULTY_LABELS,
   DIFFICULTY_TIERS,
@@ -12,14 +13,15 @@ import {
 } from '@/lib/types';
 
 const CHIP_BASE =
-  'inline-flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
-const CHIP_ON = 'border-transparent bg-accent-soft text-emerald-50 ring-1 ring-accent';
+  'inline-flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-sm font-medium transition-all duration-200 ease-spring focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.97]';
+const CHIP_ON =
+  'border-accent/50 bg-accent/10 text-accent shadow-[0_0_20px_-8px_rgba(52,211,153,0.55)]';
 const CHIP_OFF =
-  'border-stone-800 bg-surface-raised text-stone-300 hover:border-stone-600 hover:text-stone-100';
+  'border-white/10 bg-white/[0.03] text-stone-300 hover:border-white/20 hover:bg-white/[0.06] hover:text-stone-100';
 
-// Hide scrollbars on the horizontal chip rows while keeping them scrollable.
+// Horizontal-scroll rows on mobile; wrap freely from md up. Scrollbars hidden.
 const SCROLLER =
-  'flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
+  'flex gap-2 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
 
 export function SpotsFilters() {
   const router = useRouter();
@@ -121,24 +123,30 @@ export function SpotsFilters() {
   }
 
   const segBase =
-    'inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
+    'inline-flex min-h-10 items-center gap-1.5 rounded-lg px-3.5 text-sm font-medium transition-all duration-200 ease-spring focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
   return (
-    <section aria-label="Filter and sort spots" className="mt-4 space-y-3">
+    <section
+      aria-label="Filter and sort spots"
+      className="mt-6 space-y-4 rounded-2xl bg-surface-raised p-4 shadow-card hairline sm:p-5"
+    >
       {/* Sort + Near me */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2.5">
         <div
           role="group"
           aria-label="Sort order"
-          className="inline-flex rounded-lg border border-stone-800 bg-surface-raised p-0.5"
+          className="inline-flex rounded-xl border border-white/10 bg-white/[0.03] p-1"
         >
           <button
             type="button"
             aria-pressed={!nearestActive}
             onClick={selectName}
-            className={`${segBase} ${
-              !nearestActive ? 'bg-accent text-stone-950' : 'text-stone-300 hover:text-stone-100'
-            }`}
+            className={cn(
+              segBase,
+              !nearestActive
+                ? 'bg-accent text-stone-950 shadow-[0_6px_18px_-10px_rgba(52,211,153,0.7)]'
+                : 'text-stone-400 hover:text-stone-100',
+            )}
           >
             Name
           </button>
@@ -146,23 +154,26 @@ export function SpotsFilters() {
             type="button"
             aria-pressed={nearestActive}
             onClick={selectNearest}
-            className={`${segBase} ${
-              nearestActive ? 'bg-accent text-stone-950' : 'text-stone-300 hover:text-stone-100'
-            }`}
+            className={cn(
+              segBase,
+              nearestActive
+                ? 'bg-accent text-stone-950 shadow-[0_6px_18px_-10px_rgba(52,211,153,0.7)]'
+                : 'text-stone-400 hover:text-stone-100',
+            )}
           >
             Nearest
           </button>
         </div>
 
         {near ? (
-          <span className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-transparent bg-accent-soft px-3 text-sm font-medium text-emerald-50 ring-1 ring-accent">
+          <span className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-accent/50 bg-accent/10 px-3.5 text-sm font-medium text-accent">
             <Icon name="pin" size={14} weight="fill" />
             Near you
             <button
               type="button"
               onClick={clearNear}
               aria-label="Clear your location"
-              className="-mr-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-emerald-100/80 hover:bg-black/20 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+              className="-mr-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-accent/80 transition-colors hover:bg-white/10 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
             >
               <Icon name="close" size={14} />
             </button>
@@ -172,7 +183,7 @@ export function SpotsFilters() {
             type="button"
             onClick={requestNearMe}
             disabled={locating}
-            className={`${CHIP_BASE} ${CHIP_OFF} disabled:opacity-60`}
+            className={cn(CHIP_BASE, CHIP_OFF, 'disabled:opacity-60')}
           >
             {locating ? (
               <Icon name="spinner" size={16} className="animate-spin" />
@@ -181,6 +192,16 @@ export function SpotsFilters() {
             )}
             {locating ? 'Locating…' : 'Near me'}
           </button>
+        )}
+
+        {hasAnyParam && (
+          <Link
+            href="/spots"
+            className="ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-stone-400 transition-colors hover:text-stone-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            <Icon name="close" size={14} />
+            Clear all
+          </Link>
         )}
       </div>
 
@@ -200,7 +221,7 @@ export function SpotsFilters() {
               type="button"
               aria-pressed={on}
               onClick={() => toggleInList('types', type)}
-              className={`${CHIP_BASE} ${on ? CHIP_ON : CHIP_OFF}`}
+              className={cn(CHIP_BASE, on ? CHIP_ON : CHIP_OFF)}
             >
               <Icon name={type} size={14} weight={on ? 'fill' : 'regular'} />
               {FEATURE_TYPE_LABELS[type]}
@@ -219,7 +240,7 @@ export function SpotsFilters() {
               type="button"
               aria-pressed={on}
               onClick={() => toggleInList('difficulty', tier)}
-              className={`${CHIP_BASE} ${on ? CHIP_ON : CHIP_OFF}`}
+              className={cn(CHIP_BASE, on ? CHIP_ON : CHIP_OFF)}
             >
               {DIFFICULTY_LABELS[tier]}
             </button>
@@ -227,38 +248,29 @@ export function SpotsFilters() {
         })}
       </FilterRow>
 
-      {/* Verified + clear all */}
-      <div className="flex items-center justify-between gap-2 pt-0.5">
+      {/* Verified only */}
+      <FilterRow label="Trust">
         <button
           type="button"
           aria-pressed={verifiedOnly}
           onClick={toggleVerified}
-          className={`${CHIP_BASE} ${verifiedOnly ? CHIP_ON : CHIP_OFF}`}
+          className={cn(CHIP_BASE, verifiedOnly ? CHIP_ON : CHIP_OFF)}
         >
           <Icon name="verified" size={16} weight={verifiedOnly ? 'fill' : 'regular'} />
           Verified only
         </button>
-
-        {hasAnyParam && (
-          <Link
-            href="/spots"
-            className="inline-flex min-h-11 items-center rounded-md px-2 text-sm text-stone-400 underline-offset-2 hover:text-stone-200 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          >
-            Clear all
-          </Link>
-        )}
-      </div>
+      </FilterRow>
     </section>
   );
 }
 
 function FilterRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div>
-      <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-stone-500">
+    <div className="flex flex-col gap-2 md:flex-row md:items-start md:gap-4">
+      <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500 md:min-w-[72px] md:pt-3">
         {label}
       </span>
-      <div role="group" aria-label={`Filter by ${label.toLowerCase()}`} className={SCROLLER}>
+      <div role="group" aria-label={`Filter by ${label.toLowerCase()}`} className={cn(SCROLLER, 'flex-1')}>
         {children}
       </div>
     </div>

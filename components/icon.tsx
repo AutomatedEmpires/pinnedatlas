@@ -23,6 +23,7 @@ import {
   PaperPlaneTilt,
   Plus,
   SealCheck,
+  Stack,
   Thermometer,
   User,
   UsersThree,
@@ -53,6 +54,7 @@ export type IconName =
   | 'submit'
   | 'user'
   | 'premium'
+  | 'collections'
   | 'compass'
   | 'pin'
   | 'back'
@@ -83,6 +85,7 @@ const REGISTRY: Record<IconName, PhosphorIcon> = {
   submit: Plus,
   user: User,
   premium: Crown,
+  collections: Stack,
   compass: Compass,
   pin: MapPin,
   back: ArrowLeft,

@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import { env, hasSupabase } from '@/lib/env';
 import { listLocationSlugs } from '@/lib/db/locations';
 import { hubPaths } from '@/lib/hubs';
+import { collectionPaths } from '@/lib/collections';
 
 const STATIC_PATHS = ['/', '/spots', '/explore', '/pricing', '/about', '/legal/terms', '/legal/privacy'];
 
@@ -20,6 +21,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .filter((p) => p !== '/explore')
     .map((path) => ({ url: `${base}${path}`, changeFrequency: 'weekly', priority: 0.8 }));
   staticEntries.push(...hubEntries);
+
+  // Curated editorial collections (/collections and /collections/{slug}).
+  const collectionEntries: MetadataRoute.Sitemap = collectionPaths().map((path) => ({
+    url: `${base}${path}`,
+    changeFrequency: 'weekly',
+    priority: 0.8,
+  }));
+  staticEntries.push(...collectionEntries);
 
   if (!hasSupabase) return staticEntries;
 

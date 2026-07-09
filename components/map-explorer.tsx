@@ -2,7 +2,7 @@
 
 // Map-first explore experience. The user lands on a full map; a listing panel
 // (Zillow-style) stays synced to whatever is in the current map viewport —
-// a side column on desktop, a toggleable overlay on mobile.
+// a side column on desktop, a toggleable glass overlay on mobile.
 //
 // Base map uses MapLibre GL with a free, no-token dark vector style so the map
 // always renders. If a Mapbox token is later provided it can be swapped in at
@@ -17,12 +17,15 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import {
   DIFFICULTY_LABELS,
   FEATURE_TYPES,
+  FEATURE_TYPE_COLORS,
   FEATURE_TYPE_LABELS,
   type DifficultyTier,
   type FeatureType,
   type ModerationStatus,
 } from '@/lib/types';
 import { Icon } from '@/components/icon';
+import { cn } from '@/components/ui';
+import { formatDistanceKm, haversineKm } from '@/lib/geo';
 import { captureEvent } from '@/app/providers';
 
 const STYLE_URL = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
@@ -41,6 +44,12 @@ interface Spot {
   color: string;
   lng: number;
   lat: number;
+}
+
+// A visible spot carries its distance from the current map center, computed at
+// recompute time so rows can show a live "how far from here" readout.
+interface VisibleSpot extends Spot {
+  distanceKm: number;
 }
 
 function spotsFromCollection(fc: FeatureCollection): Spot[] {
@@ -74,7 +83,7 @@ export function MapExplorer() {
   const fetchSeqRef = useRef(0);
   const vpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [visible, setVisible] = useState<Spot[]>([]);
+  const [visible, setVisible] = useState<VisibleSpot[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [mobileView, setMobileView] = useState<'map' | 'list'>('map');
@@ -118,7 +127,12 @@ export function MapExplorer() {
         (a.lng - c.lng) ** 2 + (a.lat - c.lat) ** 2 - ((z.lng - c.lng) ** 2 + (z.lat - c.lat) ** 2),
     );
     setTotal(inBounds.length);
-    setVisible(inBounds.slice(0, LIST_CAP));
+    setVisible(
+      inBounds.slice(0, LIST_CAP).map((s) => ({
+        ...s,
+        distanceKm: haversineKm(c.lat, c.lng, s.lat, s.lng),
+      })),
+    );
 
     // Debounced viewport telemetry: zoom + result count only, no coordinates.
     if (vpTimerRef.current) clearTimeout(vpTimerRef.current);
@@ -324,76 +338,129 @@ export function MapExplorer() {
     });
   }
 
+  const countLabel = total === 1 ? 'spot' : 'spots';
+
   return (
-    <div className="relative flex h-[calc(100dvh-3.5rem)] w-full flex-col lg:flex-row">
-      {/* Listing panel: desktop = left column, mobile = overlay toggled by button */}
+    // Fill the shell between the fixed navs: mobile leaves room for the bottom
+    // tab bar (4rem), desktop for the top nav (3.5rem).
+    <div className="relative flex h-[calc(100dvh-4rem)] w-full flex-col md:h-[calc(100dvh-3.5rem)] md:flex-row">
+      {/* Listing panel: desktop = static left column, mobile = glass overlay toggled by button */}
       <aside
         aria-label="Spots in the current map view"
-        className={`absolute inset-0 z-20 flex flex-col bg-surface lg:static lg:z-auto lg:w-[22rem] lg:shrink-0 lg:border-r lg:border-stone-800 ${
-          mobileView === 'list' ? 'flex' : 'hidden'
-        } lg:flex`}
+        className={cn(
+          'z-20 flex-col md:static md:z-auto md:flex md:w-[22rem] md:shrink-0 md:border-r md:border-white/8 lg:w-[24rem]',
+          'absolute inset-0 glass',
+          mobileView === 'list' ? 'flex' : 'hidden',
+        )}
       >
-        <div className="flex items-center justify-between gap-2 border-b border-stone-800 px-4 py-3">
-          <p aria-live="polite" className="text-sm font-medium text-stone-200">
-            {loading ? 'Loading spots…' : `${total.toLocaleString()} ${total === 1 ? 'spot' : 'spots'} in view`}
+        {/* Bottom-sheet grabber — a mobile affordance for the overlay. */}
+        <div className="flex justify-center pt-2.5 md:hidden" aria-hidden>
+          <span className="h-1 w-9 rounded-full bg-white/20" />
+        </div>
+
+        <div className="flex items-center justify-between gap-3 border-b border-white/8 px-4 py-3.5 md:px-5">
+          <p aria-live="polite" className="flex min-w-0 items-baseline gap-2">
+            <span className="font-display text-2xl font-semibold tabular-nums text-stone-50">
+              {loading ? '—' : total.toLocaleString()}
+            </span>
+            <span className="truncate text-sm text-stone-400">
+              {loading ? 'finding spots…' : `${countLabel} in view`}
+            </span>
           </p>
           <button
             type="button"
             onClick={() => setMobileView('map')}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-surface-overlay px-3 text-sm font-medium text-stone-200 lg:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 text-sm font-medium text-stone-200 transition-colors hover:border-white/20 hover:bg-white/[0.08] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent md:hidden"
           >
             <Icon name="map" size={16} />
             Map
           </button>
         </div>
 
-        <ul className="flex-1 overflow-y-auto overscroll-contain">
-          {visible.length === 0 && !loading ? (
-            <li className="px-4 py-10 text-center text-sm text-stone-400">
-              No spots in this area. Zoom out or pan the map to find caves, waterfalls, and springs.
-            </li>
-          ) : (
-            visible.map((s) => (
-              <li key={s.slug} className="border-b border-stone-800/70">
-                <Link
-                  href={`/location/${s.slug}`}
-                  onClick={() => captureEvent('spot_opened', { via: 'list', feature_type: s.feature_type })}
-                  onMouseEnter={() => setHovered(s.slug)}
-                  onMouseLeave={() => setHovered((h) => (h === s.slug ? null : h))}
-                  onFocus={() => setHovered(s.slug)}
-                  onBlur={() => setHovered((h) => (h === s.slug ? null : h))}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-surface-raised focus-visible:bg-surface-raised focus-visible:outline-none"
-                >
-                  <span
-                    aria-hidden
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-                    style={{ backgroundColor: `${s.color}22`, color: s.color }}
-                  >
-                    <Icon name={s.feature_type} size={18} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-stone-100">{s.name}</span>
-                    <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-stone-400">
-                      <span>{FEATURE_TYPE_LABELS[s.feature_type]}</span>
-                      <span aria-hidden>·</span>
-                      <span>{DIFFICULTY_LABELS[s.difficulty_tier]}</span>
-                      {s.moderation_status === 'verified' && (
-                        <span className="inline-flex items-center gap-0.5 text-accent">
-                          <Icon name="verified" size={12} weight="fill" />
-                          Verified
-                        </span>
-                      )}
-                    </span>
-                  </span>
-                </Link>
+        <ul className="flex-1 space-y-1 overflow-y-auto overscroll-contain p-2 md:p-2.5">
+          {loading && visible.length === 0 ? (
+            Array.from({ length: 7 }).map((_, i) => (
+              <li key={i} className="flex items-center gap-3 rounded-xl px-2.5 py-2.5">
+                <span className="h-11 w-11 shrink-0 animate-pulse rounded-xl bg-white/[0.05]" />
+                <span className="flex-1 space-y-2">
+                  <span className="block h-3 w-2/3 animate-pulse rounded bg-white/[0.05]" />
+                  <span className="block h-2.5 w-1/3 animate-pulse rounded bg-white/[0.04]" />
+                </span>
               </li>
             ))
+          ) : visible.length === 0 ? (
+            <li className="flex flex-col items-center gap-3 px-6 py-16 text-center">
+              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.04] text-stone-500 ring-1 ring-inset ring-white/10">
+                <Icon name="compass" size={26} />
+              </span>
+              <p className="max-w-[15rem] text-sm leading-relaxed text-stone-400">
+                No spots in this view. Zoom out or pan the map to find caves, waterfalls, and
+                springs.
+              </p>
+            </li>
+          ) : (
+            visible.map((s) => {
+              const active = hovered === s.slug;
+              const isVerified = s.moderation_status === 'verified';
+              return (
+                <li key={s.slug}>
+                  <Link
+                    href={`/location/${s.slug}`}
+                    onClick={() =>
+                      captureEvent('spot_opened', { via: 'list', feature_type: s.feature_type })
+                    }
+                    onMouseEnter={() => setHovered(s.slug)}
+                    onMouseLeave={() => setHovered((h) => (h === s.slug ? null : h))}
+                    onFocus={() => setHovered(s.slug)}
+                    onBlur={() => setHovered((h) => (h === s.slug ? null : h))}
+                    className={cn(
+                      'group flex items-center gap-3 rounded-xl px-2.5 py-2.5 transition-all duration-200 ease-spring',
+                      'hover:-translate-y-px hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+                      active && 'bg-white/[0.06] ring-1 ring-inset ring-accent/40',
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset ring-white/5 transition-transform duration-200 ease-spring group-hover:scale-105"
+                      style={{ backgroundColor: `${s.color}1f`, color: s.color }}
+                    >
+                      <Icon name={s.feature_type} size={20} weight="fill" />
+                    </span>
+
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-stone-50">
+                        {s.name}
+                      </span>
+                      <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] leading-none text-stone-400">
+                        <span className="font-medium" style={{ color: s.color }}>
+                          {FEATURE_TYPE_LABELS[s.feature_type]}
+                        </span>
+                        <span aria-hidden className="text-stone-600">
+                          ·
+                        </span>
+                        <span>{DIFFICULTY_LABELS[s.difficulty_tier]}</span>
+                        {isVerified && (
+                          <span className="inline-flex items-center gap-0.5 text-accent">
+                            <Icon name="verified" size={12} weight="fill" />
+                            Verified
+                          </span>
+                        )}
+                      </span>
+                    </span>
+
+                    <span className="shrink-0 self-center text-xs font-medium tabular-nums text-stone-400 transition-colors group-hover:text-stone-200">
+                      {formatDistanceKm(s.distanceKm)}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })
           )}
         </ul>
       </aside>
 
       {/* Map area */}
-      <div className="relative h-full w-full lg:flex-1">
+      <div className="relative h-full w-full md:flex-1">
         <div
           ref={containerRef}
           role="application"
@@ -401,14 +468,20 @@ export function MapExplorer() {
           className="absolute inset-0"
         />
 
-        {/* Top overlay: brand, search, type chips */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-2 p-3">
-          <div className="pointer-events-auto flex items-center gap-2">
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-surface/85 px-3 py-2 text-sm font-semibold tracking-tight backdrop-blur">
+        {/* Top overlay: brand (mobile), search pill, feature-type filter chips.
+            The container is click-through; only the pills capture pointer events
+            so the map stays pannable in the gaps. */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-2.5 p-3 md:p-4">
+          <div className="flex items-center gap-2.5">
+            {/* Desktop has a top nav wordmark already; show it here on mobile only. */}
+            <span className="glass pointer-events-auto flex shrink-0 items-center gap-2 rounded-full px-3.5 py-2.5 shadow-float ring-1 ring-inset ring-white/10 md:hidden">
               <Icon name="pin" size={16} weight="fill" className="text-accent" />
-              PinnedAtlas
+              <span className="font-display text-base font-semibold tracking-tight text-stone-50">
+                PinnedAtlas
+              </span>
             </span>
-            <label className="flex flex-1 items-center gap-2 rounded-full bg-surface-raised/90 px-3 py-2 shadow-lg ring-1 ring-stone-700 backdrop-blur focus-within:ring-accent">
+
+            <label className="glass pointer-events-auto flex min-h-11 flex-1 items-center gap-2 rounded-full px-4 shadow-float ring-1 ring-inset ring-white/10 transition-all duration-200 focus-within:shadow-glow focus-within:ring-accent md:max-w-sm">
               <Icon name="search" size={16} className="shrink-0 text-stone-400" />
               <input
                 type="search"
@@ -416,15 +489,25 @@ export function MapExplorer() {
                 onChange={(e) => setQueryInput(e.target.value)}
                 placeholder="Search by name…"
                 aria-label="Search spots by name"
-                className="w-full min-w-0 bg-transparent text-sm text-stone-100 placeholder:text-stone-500 focus:outline-none"
+                className="w-full min-w-0 bg-transparent text-sm text-stone-100 placeholder:text-stone-500 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
               />
+              {queryInput && (
+                <button
+                  type="button"
+                  onClick={() => setQueryInput('')}
+                  aria-label="Clear search"
+                  className="flex shrink-0 items-center justify-center rounded-full p-1 text-stone-500 transition-colors hover:text-stone-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+                >
+                  <Icon name="close" size={14} />
+                </button>
+              )}
             </label>
           </div>
 
           <div
             role="group"
             aria-label="Filter by feature type"
-            className="pointer-events-auto flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {FEATURE_TYPES.map((t) => {
               const active = types.has(t);
@@ -434,13 +517,19 @@ export function MapExplorer() {
                   type="button"
                   onClick={() => toggleType(t)}
                   aria-pressed={active}
-                  className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                  className={cn(
+                    'pointer-events-auto inline-flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-sm font-medium ring-1 ring-inset transition-all duration-200 ease-spring active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
                     active
-                      ? 'bg-accent-soft text-emerald-50 ring-1 ring-accent'
-                      : 'bg-surface-raised/90 text-stone-300 ring-1 ring-stone-700 backdrop-blur hover:text-stone-100'
-                  }`}
+                      ? 'bg-accent/15 text-accent ring-accent/60'
+                      : 'glass text-stone-300 ring-white/10 hover:text-stone-100 hover:ring-white/20',
+                  )}
                 >
-                  <Icon name={t} size={15} />
+                  <span
+                    className="flex"
+                    style={active ? undefined : { color: FEATURE_TYPE_COLORS[t] }}
+                  >
+                    <Icon name={t} size={15} weight="fill" />
+                  </span>
                   {FEATURE_TYPE_LABELS[t]}
                 </button>
               );
@@ -448,16 +537,17 @@ export function MapExplorer() {
           </div>
         </div>
 
-        {/* Mobile: toggle to the listing panel */}
+        {/* Mobile: toggle to the listing panel. Bottom-center keeps it clear of
+            the map controls at bottom-right. */}
         <button
           type="button"
           onClick={() => {
             captureEvent('list_opened_mobile', { results: total });
             setMobileView('list');
           }}
-          className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-stone-950 shadow-lg lg:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-stone-950 shadow-[0_10px_30px_-8px_rgba(52,211,153,0.6)] transition-all duration-200 ease-spring hover:bg-accent-strong active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent md:hidden"
         >
-          <Icon name="list" size={18} />
+          <Icon name="list" size={18} weight="bold" />
           {loading ? 'List' : `List · ${total.toLocaleString()}`}
         </button>
       </div>

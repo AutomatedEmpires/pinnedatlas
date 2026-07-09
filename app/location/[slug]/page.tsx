@@ -1,17 +1,21 @@
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Icon } from '@/components/icon';
+import { Icon, type IconName } from '@/components/icon';
 import { GuidancePanel } from '@/components/location/guidance-panel';
 import { LocationJsonLd } from '@/components/location/location-jsonld';
 import { MiniMapLazy } from '@/components/location/mini-map-lazy';
 import { NearbySpots } from '@/components/location/nearby-spots';
 import { PhotoGallery } from '@/components/location/photo-gallery';
+import { WeatherPanel } from '@/components/location/weather-panel';
+import { Reveal } from '@/components/reveal';
 import { ReportForm } from '@/components/report-form';
 import { ReportList } from '@/components/report-list';
 import { SafetyNotice, DEFAULT_SAFETY_COPY } from '@/components/safety-notice';
 import { SaveButton } from '@/components/save-button';
 import { SaveOfflineButton } from '@/components/save-offline-button';
+import { SectionHeading, StatTile, badgeClass, buttonClass, cardClass, cn } from '@/components/ui';
 import { getUserId } from '@/lib/auth';
 import { getEntitlement, type Entitlement } from '@/lib/billing/entitlements';
 import { getLocationBySlug, listReportsForLocation, locationsNear } from '@/lib/db/locations';
@@ -19,6 +23,7 @@ import { listMediaForLocation } from '@/lib/db/media';
 import { getStatesForUser } from '@/lib/db/user-state';
 import { getGuidance } from '@/lib/guidance';
 import { directionsUrl, formatCoords, timeAgo } from '@/lib/geo';
+import { getWeather } from '@/lib/weather';
 import {
   ACCESS_LABELS,
   DIFFICULTY_LABELS,
@@ -26,14 +31,20 @@ import {
   FEATURE_TYPE_LABELS,
   MODERATION_LABELS,
   SOURCE_LABELS,
+  type FeatureType,
   type LocationRecord,
   type UserLocationState,
 } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
-const BADGE = 'rounded bg-stone-800/80 px-1.5 py-0.5 text-stone-300';
-const SECTION_HEADING = 'text-xs font-semibold uppercase tracking-wide text-stone-500';
+const TYPE_TONE: Record<FeatureType, 'violet' | 'sky' | 'rose' | 'teal' | 'neutral'> = {
+  cave: 'violet',
+  waterfall: 'sky',
+  hot_spring: 'rose',
+  spring: 'teal',
+  other: 'neutral',
+};
 
 export async function generateMetadata({
   params,
@@ -95,11 +106,12 @@ export default async function LocationPage({
   const location = await getLocationBySlug(slug);
   if (!location) notFound();
 
-  const [reports, nearRaw, media, userId] = await Promise.all([
+  const [reports, nearRaw, media, userId, weather] = await Promise.all([
     listReportsForLocation(location.id),
     locationsNear(location.lat, location.lng, 40000, 8),
     listMediaForLocation(location.id),
     getUserId(),
+    getWeather(location.lat, location.lng),
   ]);
 
   let userState: UserLocationState | null = null;
@@ -125,11 +137,15 @@ export default async function LocationPage({
   const verified = location.moderation_status === 'verified';
   const guidance = getGuidance(location);
 
-  const facts: { label: string; value: string; mono?: boolean }[] = [
-    { label: 'Type', value: FEATURE_TYPE_LABELS[location.feature_type] },
-    { label: 'Difficulty', value: DIFFICULTY_LABELS[location.difficulty_tier] },
-    { label: 'Effort', value: guidance.effort.label },
-    { label: 'Best time', value: guidance.bestTime.label },
+  const heroMedia = media[0] ?? null;
+  // Don't repeat the hero image in the gallery strip.
+  const galleryMedia = heroMedia ? media.slice(1) : media;
+
+  const facts: { label: string; value: ReactNode; icon: IconName; full?: boolean }[] = [
+    { label: 'Type', value: FEATURE_TYPE_LABELS[location.feature_type], icon: location.feature_type },
+    { label: 'Difficulty', value: DIFFICULTY_LABELS[location.difficulty_tier], icon: 'compass' },
+    { label: 'Effort', value: guidance.effort.label, icon: 'map' },
+    { label: 'Best time', value: guidance.bestTime.label, icon: 'compass', full: true },
   ];
   if (location.elevation_m !== null) {
     facts.push({
@@ -137,173 +153,264 @@ export default async function LocationPage({
       value: `${location.elevation_m.toLocaleString()} m · ${Math.round(
         location.elevation_m * 3.28084,
       ).toLocaleString()} ft`,
+      icon: 'cave',
+      full: true,
     });
   }
   facts.push({
     label: 'Coordinates',
-    value: formatCoords(location.lat, location.lng),
-    mono: true,
+    value: <span className="font-mono text-xs">{formatCoords(location.lat, location.lng)}</span>,
+    icon: 'pin',
+    full: true,
   });
 
-  return (
-    <div className="mx-auto w-full max-w-shell px-4 py-4">
-      <Link
-        href="/spots"
-        className="inline-flex min-h-11 items-center gap-1.5 text-sm text-stone-400 hover:text-stone-200"
-      >
-        <Icon name="back" size={16} />
-        Browse spots
-      </Link>
+  const badges = (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className={badgeClass(TYPE_TONE[location.feature_type])}>
+        <Icon name={location.feature_type} size={12} weight="fill" />
+        {FEATURE_TYPE_LABELS[location.feature_type]}
+      </span>
+      <span className={badgeClass('neutral')}>{DIFFICULTY_LABELS[location.difficulty_tier]}</span>
+      <span className={badgeClass(verified ? 'accent' : 'neutral')}>
+        <Icon name={verified ? 'verified' : 'community'} size={12} weight={verified ? 'fill' : 'regular'} />
+        {MODERATION_LABELS[location.moderation_status]}
+      </span>
+      {location.state_code && <span className={badgeClass('neutral')}>{location.state_code}</span>}
+    </div>
+  );
 
-      <header
-        className="mt-2 overflow-hidden rounded-xl bg-surface-raised p-5"
-        // 33 = 20% alpha; type-colored wash fading into the raised surface.
-        style={{ backgroundImage: `linear-gradient(150deg, ${color}33, transparent 70%)` }}
-      >
-        <span
-          className="flex h-14 w-14 items-center justify-center rounded-full"
-          style={{ backgroundColor: `${color}33`, color }}
-        >
-          <Icon name={location.feature_type} size={30} />
-        </span>
-        <h1 className="mt-3 text-2xl font-semibold text-stone-100">{location.name}</h1>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
-          <span className={BADGE}>{FEATURE_TYPE_LABELS[location.feature_type]}</span>
-          <span className={BADGE}>{DIFFICULTY_LABELS[location.difficulty_tier]}</span>
-          <span
-            className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 ${
-              verified ? 'bg-emerald-500/10 text-emerald-400' : 'bg-stone-800/80 text-stone-400'
-            }`}
-          >
-            <Icon
-              name={verified ? 'verified' : 'community'}
-              size={12}
-              weight={verified ? 'fill' : 'regular'}
+  return (
+    <article className="animate-fade-in">
+      {/* Cinematic hero */}
+      <header className="relative isolate w-full overflow-hidden">
+        {heroMedia ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- remote user media, full-bleed hero */}
+            <img
+              src={heroMedia.url}
+              alt={location.name}
+              className="absolute inset-0 -z-10 h-full w-full object-cover"
             />
-            {MODERATION_LABELS[location.moderation_status]}
-          </span>
-          {location.state_code && <span className={BADGE}>{location.state_code}</span>}
+            <div
+              aria-hidden
+              className="absolute inset-0 -z-10 bg-gradient-to-t from-surface via-surface/40 to-transparent"
+            />
+            <div
+              aria-hidden
+              className="absolute inset-0 -z-10 bg-gradient-to-b from-surface/60 via-transparent to-transparent"
+            />
+          </>
+        ) : (
+          <div
+            aria-hidden
+            className="absolute inset-0 -z-10"
+            style={{
+              backgroundImage: `linear-gradient(160deg, ${color}59, ${color}12 45%, transparent 72%)`,
+            }}
+          />
+        )}
+
+        <div className="mx-auto flex h-[42vh] max-w-content flex-col justify-between px-4 py-4 sm:h-[52vh] sm:px-6 lg:max-w-wide lg:px-8 lg:py-6">
+          <div>
+            <Link
+              href="/spots"
+              className={cn(buttonClass({ variant: 'secondary', size: 'sm' }), 'glass border-white/15')}
+            >
+              <Icon name="back" size={16} />
+              Browse spots
+            </Link>
+          </div>
+
+          <div className="max-w-3xl">
+            {!heroMedia && (
+              <span
+                className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ring-1 ring-inset ring-white/10"
+                style={{ backgroundColor: `${color}26`, color }}
+              >
+                <Icon name={location.feature_type} size={30} weight="fill" />
+              </span>
+            )}
+            <h1 className="font-display text-3xl font-semibold leading-[1.05] text-white [text-shadow:0_2px_16px_rgba(0,0,0,0.55)] sm:text-4xl lg:text-5xl">
+              {location.name}
+            </h1>
+            <div className="mt-3.5">{badges}</div>
+          </div>
         </div>
       </header>
 
-      <div className="mt-4 space-y-6">
-        <PhotoGallery media={media} name={location.name} />
-
-        {/* Primary actions: the two things a visitor is most likely to want. */}
-        <div className="flex flex-wrap items-center gap-3">
-          <a
-            href={directionsUrl(location.lat, location.lng)}
-            target="_blank"
-            rel="noopener"
-            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-accent px-5 text-sm font-semibold text-stone-950 transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:flex-none"
-          >
-            <Icon name="directions" size={18} />
-            Directions
-          </a>
-          <SaveButton
-            locationId={location.id}
-            initialSaved={Boolean(userState?.saved)}
-            isSignedIn={isSignedIn}
-          />
-          <SaveOfflineButton
-            slug={location.slug}
-            name={location.name}
-            feature_type={location.feature_type}
-            imageUrl={media[0]?.url}
-          />
-        </div>
-
-        <section aria-label="What to expect">
-          <h2 className={SECTION_HEADING}>What to expect</h2>
-          <p className="mt-2 text-sm leading-relaxed text-stone-300">{guidance.whatToExpect}</p>
-        </section>
-
-        {location.description && (
-          <section aria-label="About this spot">
-            <h2 className={SECTION_HEADING}>About this spot</h2>
-            <p className="mt-2 rounded-xl bg-surface-raised p-4 text-sm leading-relaxed text-stone-300">
-              {location.description}
-            </p>
-            <p className="mt-1.5 text-xs text-stone-500">From {SOURCE_LABELS[location.source]}</p>
-          </section>
-        )}
-
-        <section aria-label="Key facts">
-          <h2 className={SECTION_HEADING}>Key facts</h2>
-          <dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {facts.map((f) => (
-              <div key={f.label} className="rounded-xl bg-surface-raised p-3">
-                <dt className="text-xs text-stone-500">{f.label}</dt>
-                <dd
-                  className={`mt-0.5 text-sm text-stone-100 ${f.mono ? 'font-mono' : 'font-medium'}`}
+      {/* Body */}
+      <div className="mx-auto w-full max-w-content px-4 py-8 sm:px-6 sm:py-10 lg:max-w-wide lg:px-8">
+        <div className="lg:grid lg:grid-cols-[1fr_20rem] lg:gap-8">
+          {/* Intelligence rail — first in DOM so actions/facts/weather sit near the
+              top on mobile; pinned to the right column on desktop. */}
+          <aside className="lg:col-start-2 lg:row-start-1">
+            <div className="space-y-4 lg:sticky lg:top-20">
+              {/* Actions */}
+              <div className={cardClass({ className: 'p-4' })}>
+                <a
+                  href={directionsUrl(location.lat, location.lng)}
+                  target="_blank"
+                  rel="noopener"
+                  className={buttonClass({ variant: 'primary', size: 'lg', className: 'w-full' })}
                 >
-                  {f.value}
-                </dd>
+                  <Icon name="directions" size={18} />
+                  Directions
+                </a>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <SaveButton
+                    locationId={location.id}
+                    initialSaved={Boolean(userState?.saved)}
+                    isSignedIn={isSignedIn}
+                  />
+                  <SaveOfflineButton
+                    slug={location.slug}
+                    name={location.name}
+                    feature_type={location.feature_type}
+                    imageUrl={media[0]?.url}
+                  />
+                </div>
               </div>
-            ))}
-          </dl>
-        </section>
 
-        <section aria-label="Where it is">
-          <h2 className={SECTION_HEADING}>Where it is</h2>
-          <div className="mt-3">
-            <MiniMapLazy lat={location.lat} lng={location.lng} color={color} name={location.name} />
-          </div>
-        </section>
+              {/* Key facts */}
+              <div className={cardClass({ className: 'p-4' })}>
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+                  At a glance
+                </span>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {facts.map((f) => (
+                    <StatTile
+                      key={f.label}
+                      label={f.label}
+                      value={f.value}
+                      icon={<Icon name={f.icon} size={13} />}
+                      className={f.full ? 'col-span-2' : ''}
+                    />
+                  ))}
+                </div>
+              </div>
 
-        <GuidancePanel guidance={guidance} featureType={location.feature_type} />
+              {/* Live weather intelligence */}
+              <WeatherPanel weather={weather} />
+            </div>
+          </aside>
 
-        {/* Safety guidance is always shown in full — never behind the paywall. */}
-        <section aria-label="Safety" className="space-y-3">
-          <h2 className={SECTION_HEADING}>Safety</h2>
-          <SafetyNotice>
-            <p>{DEFAULT_SAFETY_COPY}</p>
-          </SafetyNotice>
-          {guidance.safety.length > 0 && (
-            <ul className="space-y-2">
-              {guidance.safety.map((item) => (
-                <li key={item} className="flex gap-2 text-sm leading-relaxed text-stone-300">
-                  <Icon name="warning" size={16} className="mt-0.5 shrink-0 text-amber-400/80" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {location.hazard_notes && (
-            <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm font-medium text-amber-200">
-              {location.hazard_notes}
+          {/* Main content */}
+          <div className="mt-8 min-w-0 space-y-12 lg:col-start-1 lg:row-start-1 lg:mt-0">
+            {galleryMedia.length > 0 && (
+              <Reveal>
+                <SectionHeading eyebrow="Gallery" title="More photos" className="mb-4" />
+                <PhotoGallery media={galleryMedia} name={location.name} />
+              </Reveal>
+            )}
+
+            <Reveal className="space-y-8">
+              <div>
+                <SectionHeading eyebrow="Overview" title="What to expect" className="mb-3" />
+                <p className="text-base leading-relaxed text-stone-300 sm:text-lg">
+                  {guidance.whatToExpect}
+                </p>
+              </div>
+
+              {location.description && (
+                <div>
+                  <SectionHeading eyebrow="Background" title="About this spot" className="mb-3" />
+                  <div className={cardClass({ className: 'p-5' })}>
+                    <p className="text-sm leading-relaxed text-stone-300 sm:text-base">
+                      {location.description}
+                    </p>
+                    <p className="mt-3 text-xs text-stone-500">
+                      Description from {SOURCE_LABELS[location.source]}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </Reveal>
+
+            <Reveal>
+              <SectionHeading eyebrow="Location" title="Where it is" className="mb-4" />
+              <MiniMapLazy lat={location.lat} lng={location.lng} color={color} name={location.name} />
+              <p className="mt-2.5 flex items-center gap-2 text-xs text-stone-500">
+                <Icon name="pin" size={13} className="text-stone-600" />
+                <span className="font-mono">{formatCoords(location.lat, location.lng)}</span>
+              </p>
+            </Reveal>
+
+            <Reveal>
+              <GuidancePanel guidance={guidance} featureType={location.feature_type} />
+            </Reveal>
+
+            {/* Safety guidance is always shown in full — never behind the paywall. */}
+            <Reveal>
+              <SectionHeading eyebrow="Stay safe" title="Safety" className="mb-4" />
+              <div className="space-y-3">
+                <SafetyNotice>
+                  <p>{DEFAULT_SAFETY_COPY}</p>
+                </SafetyNotice>
+                {guidance.safety.length > 0 && (
+                  <ul className="grid gap-2.5 sm:grid-cols-2">
+                    {guidance.safety.map((item) => (
+                      <li
+                        key={item}
+                        className="flex gap-2.5 rounded-2xl bg-surface-raised p-3.5 text-sm leading-relaxed text-stone-300 hairline"
+                      >
+                        <Icon name="warning" size={16} className="mt-0.5 shrink-0 text-amber-400/80" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {location.hazard_notes && (
+                  <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm font-medium text-amber-200">
+                    {location.hazard_notes}
+                  </p>
+                )}
+                <p className="flex items-center gap-2 text-sm text-stone-400">
+                  <Icon name="pin" size={15} className="shrink-0 text-stone-500" />
+                  {ACCESS_LABELS[location.access_type]}
+                </p>
+              </div>
+            </Reveal>
+
+            <Reveal>
+              <NearbySpots spots={nearby} />
+            </Reveal>
+
+            {entitlement?.isPremium && userState?.personal_note && (
+              <Reveal>
+                <div className={cardClass({ className: 'p-5' })}>
+                  <div className="flex items-center gap-2 text-topaz">
+                    <Icon name="premium" size={16} weight="fill" />
+                    <span className="text-xs font-semibold uppercase tracking-[0.14em]">
+                      Your private note
+                    </span>
+                  </div>
+                  <p className="mt-2.5 text-sm leading-relaxed text-stone-300">
+                    {userState.personal_note}
+                  </p>
+                </div>
+              </Reveal>
+            )}
+
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-stone-500">
+              <span>Source: {SOURCE_LABELS[location.source]}</span>
+              <span aria-hidden>·</span>
+              <span>Updated {timeAgo(location.updated_at)}</span>
             </p>
-          )}
-          <p className="text-sm text-stone-400">{ACCESS_LABELS[location.access_type]}</p>
-        </section>
 
-        <NearbySpots spots={nearby} />
-
-        {entitlement?.isPremium && userState?.personal_note && (
-          <section aria-label="Your note">
-            <h2 className={SECTION_HEADING}>Your note</h2>
-            <p className="mt-2 rounded-xl bg-surface-raised p-4 text-sm leading-relaxed text-stone-300">
-              {userState.personal_note}
-            </p>
-          </section>
-        )}
-
-        <p className="text-xs text-stone-500">
-          Source: {SOURCE_LABELS[location.source]} · Updated {timeAgo(location.updated_at)}
-        </p>
-
-        <section aria-label="Latest conditions">
-          <h2 className={SECTION_HEADING}>Latest conditions</h2>
-          <div className="mt-3">
-            <ReportList reports={reports} />
+            <Reveal>
+              <SectionHeading eyebrow="Community" title="Latest conditions" className="mb-4" />
+              <div className="space-y-6">
+                <ReportList reports={reports} />
+                <div className={cardClass({ className: 'p-5' })}>
+                  <ReportForm locationId={location.id} isSignedIn={isSignedIn} />
+                </div>
+              </div>
+            </Reveal>
           </div>
-          <div className="mt-4">
-            <ReportForm locationId={location.id} isSignedIn={isSignedIn} />
-          </div>
-        </section>
+        </div>
       </div>
 
       <LocationJsonLd location={location} />
-    </div>
+    </article>
   );
 }

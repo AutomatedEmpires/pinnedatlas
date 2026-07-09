@@ -8,6 +8,7 @@ const LINKS: { href: string; label: string; icon: IconName; exact?: boolean }[] 
   { href: '/', label: 'Map', icon: 'map', exact: true },
   { href: '/spots', label: 'Browse', icon: 'list' },
   { href: '/explore', label: 'Explore', icon: 'compass' },
+  { href: '/collections', label: 'Collections', icon: 'collections' },
   { href: '/downloaded', label: 'Downloaded', icon: 'save' },
 ];
 

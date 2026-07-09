@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Icon } from '@/components/icon';
 import { LocationCard } from '@/components/location-card';
+import { Reveal } from '@/components/reveal';
+import { buttonClass, cardClass } from '@/components/ui';
 import { getServiceClient } from '@/lib/db/client';
 import { listLocations } from '@/lib/db/locations';
 import { env, hasSupabase } from '@/lib/env';
@@ -17,8 +19,6 @@ import {
 import { FEATURE_TYPE_COLORS, type FeatureType, type LocationRecord } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
-
-const SECTION_HEADING = 'text-xs font-semibold uppercase tracking-wide text-stone-500';
 
 /** Public count of one feature type in one state via a light head query. */
 async function countInState(feature: FeatureType, code: string): Promise<number> {
@@ -128,116 +128,133 @@ export default async function TypeStateHubPage({
   const jsonLdHtml = JSON.stringify(jsonLd).replace(/</g, '\\u003c');
 
   return (
-    <div className="mx-auto w-full max-w-shell px-4 py-6">
+    <div className="mx-auto w-full max-w-content px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
       <Link
         href={`/explore/${hub.slug}`}
-        className="inline-flex min-h-11 items-center gap-1.5 text-sm text-stone-400 hover:text-stone-200"
+        className="inline-flex min-h-11 items-center gap-1.5 text-sm text-stone-400 transition-colors hover:text-stone-200"
       >
         <Icon name="back" size={16} />
         {hub.plural}
       </Link>
 
-      <header className="mt-2">
-        <span
-          className="flex h-12 w-12 items-center justify-center rounded-full"
-          style={{ backgroundColor: `${color}22`, color }}
-        >
-          <Icon name={feature} size={26} weight="fill" />
-        </span>
-        <h1 className="mt-3 text-2xl font-semibold text-stone-100">
-          {hub.plural} in {stateName}
-        </h1>
-        <p className="mt-2 max-w-prose text-sm leading-relaxed text-stone-400">
-          {total > 0
-            ? `${countLabel} — mapped with coordinates, difficulty ratings, and conditions reported from the field. Always check current access and weather before you go.`
-            : `We are still charting ${pluralLower} in ${stateName}. Explore the map or browse another state below.`}
-        </p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Link
-            href={`/?types=${feature}`}
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-stone-950 transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      <Reveal>
+        <header className="mt-2 max-w-2xl">
+          <span
+            className="flex h-14 w-14 items-center justify-center rounded-2xl ring-1 ring-inset ring-white/5"
+            style={{ backgroundColor: `${color}1f`, color }}
           >
-            <Icon name="map" size={18} />
-            View on map
-          </Link>
-          <Link
-            href={`/spots?types=${feature}&state=${code}`}
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-stone-700 px-4 text-sm font-medium text-stone-200 transition-colors hover:bg-surface-overlay focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          >
-            <Icon name="list" size={18} />
-            Search
-          </Link>
-        </div>
-      </header>
+            <Icon name={feature} size={28} weight="fill" />
+          </span>
+          <span className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
+            {stateName}
+          </span>
+          <h1 className="mt-1.5 font-display text-4xl font-semibold leading-[1.05] text-stone-50 sm:text-5xl">
+            {hub.plural} in {stateName}
+          </h1>
+          <p className="mt-4 text-base leading-relaxed text-stone-400">
+            {total > 0
+              ? `${countLabel} — mapped with coordinates, difficulty ratings, and conditions reported from the field. Always check current access and weather before you go.`
+              : `We are still charting ${pluralLower} in ${stateName}. Explore the map or browse another state below.`}
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link href={`/?types=${feature}`} className={buttonClass({ variant: 'primary' })}>
+              <Icon name="map" size={18} />
+              View on map
+            </Link>
+            <Link
+              href={`/spots?types=${feature}&state=${code}`}
+              className={buttonClass({ variant: 'secondary' })}
+            >
+              <Icon name="list" size={18} />
+              Search
+            </Link>
+          </div>
+        </header>
+      </Reveal>
 
       {items.length === 0 ? (
-        <div className="mt-8 rounded-xl border border-stone-800 bg-surface-raised p-6 text-center">
+        <div className="mt-10 rounded-2xl bg-surface-raised hairline p-8 text-center">
           <div className="flex justify-center text-stone-500">
-            <Icon name={feature} size={28} />
+            <Icon name={feature} size={30} />
           </div>
           <p className="mt-3 text-sm text-stone-300">
             No {pluralLower} charted in {stateName} yet.
           </p>
           <Link
             href={`/explore/${hub.slug}`}
-            className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg border border-stone-700 px-5 text-sm font-medium text-accent transition-colors hover:bg-surface-overlay focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className={buttonClass({ variant: 'secondary', className: 'mt-5' })}
           >
             All {pluralLower}
           </Link>
         </div>
       ) : (
-        <section aria-label={`${hub.plural} in ${stateName}`} className="mt-6">
-          <h2 className={SECTION_HEADING}>{countLabel}</h2>
-          <ul className="mt-3 space-y-2">
-            {items.map((location) => (
-              <li key={location.id}>
-                <LocationCard location={location} />
-              </li>
-            ))}
-          </ul>
-          {total > items.length && (
-            <p className="mt-4 text-sm text-stone-400">
-              Showing the first {items.length.toLocaleString()}.{' '}
-              <Link
-                href={`/spots?types=${feature}&state=${code}`}
-                className="font-medium text-accent hover:underline"
-              >
-                Search all {pluralLower} in {stateName}
-              </Link>
-              .
-            </p>
-          )}
-        </section>
+        <Reveal className="mt-10">
+          <section aria-label={`${hub.plural} in ${stateName}`}>
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+              {countLabel}
+            </span>
+            <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {items.map((location) => (
+                <li key={location.id}>
+                  <LocationCard location={location} />
+                </li>
+              ))}
+            </ul>
+            {total > items.length && (
+              <p className="mt-5 text-sm text-stone-400">
+                Showing the first {items.length.toLocaleString()}.{' '}
+                <Link
+                  href={`/spots?types=${feature}&state=${code}`}
+                  className="font-medium text-accent hover:underline"
+                >
+                  Search all {pluralLower} in {stateName}
+                </Link>
+                .
+              </p>
+            )}
+          </section>
+        </Reveal>
       )}
 
       {otherStates.length > 0 && (
-        <section aria-label={`${hub.plural} in other states`} className="mt-8">
-          <h2 className={SECTION_HEADING}>{hub.plural} in other states</h2>
-          <ul className="mt-3 flex flex-wrap gap-2">
-            {otherStates.map((s) => (
-              <li key={s.code}>
-                <Link
-                  href={`/explore/${hub.slug}/${s.slug}`}
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-stone-800 bg-surface-raised px-3 py-1.5 text-sm text-stone-200 transition-colors hover:border-stone-700 hover:bg-surface-overlay focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                >
-                  <span>{s.name}</span>
-                  <span className="tabular-nums text-stone-500">{s.count.toLocaleString()}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <Reveal className="mt-12">
+          <section aria-label={`${hub.plural} in other states`}>
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+              {hub.plural} in other states
+            </span>
+            <ul className="mt-4 flex flex-wrap gap-2">
+              {otherStates.map((s) => (
+                <li key={s.code}>
+                  <Link
+                    href={`/explore/${hub.slug}/${s.slug}`}
+                    className={cardClass({
+                      hover: true,
+                      className:
+                        'inline-flex min-h-11 items-center gap-1.5 px-3 py-1.5 text-sm text-stone-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+                    })}
+                  >
+                    <span>{s.name}</span>
+                    <span className="tabular-nums text-stone-500">{s.count.toLocaleString()}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </Reveal>
       )}
 
-      <footer className="mt-10 border-t border-stone-800 pt-4">
+      <footer className="mt-12 border-t border-white/8 pt-5">
         <nav aria-label="Related" className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-stone-500">
-          <Link href="/explore" className="py-1 hover:text-stone-300">
+          <Link href="/explore" className="py-1 transition-colors hover:text-stone-300">
             Explore
           </Link>
-          <Link href={`/explore/${hub.slug}`} className="py-1 hover:text-stone-300">
+          <Link href={`/explore/${hub.slug}`} className="py-1 transition-colors hover:text-stone-300">
             All {pluralLower}
           </Link>
-          <Link href={`/?types=${feature}`} className="py-1 hover:text-stone-300">
+          <Link href="/collections" className="py-1 transition-colors hover:text-stone-300">
+            Collections
+          </Link>
+          <Link href={`/?types=${feature}`} className="py-1 transition-colors hover:text-stone-300">
             Map
           </Link>
         </nav>
