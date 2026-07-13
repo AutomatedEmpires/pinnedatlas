@@ -4,7 +4,7 @@ This contract is binding for every contributor and agent working in this reposit
 
 ## 1. App purpose
 
-PinnedAtlas is a map-first, mobile-first product for discovering natural features such as caves, waterfalls, and hot springs. `FABLE5_BUILD_BRIEF.md` is the current repository product mandate. One canonical `location` object must drive map pins, detail pages, search, submission, and moderation; personal saved, visited, and note data belongs in `user_location_state`; and controlled values must use the established enums or dictionaries rather than free text.
+PinnedAtlas is a map-first, mobile-first product for discovering natural features such as caves, waterfalls, and hot springs. `FABLE5_BUILD_BRIEF.md` remains a source for product, model, and design intent only. This `AGENTS.md` overrides any brief language permitting direct work on `main`, provider provisioning, production geodata ingestion, deployment, or live payment activation. One canonical `location` object must drive map pins, detail pages, search, submission, and moderation; personal saved, visited, and note data belongs in `user_location_state`; and controlled values must use the established enums or dictionaries rather than free text.
 
 Because the product can route people to physical hazards or restricted property, safety, trespass, access, and legal warnings are launch-blocking requirements.
 
@@ -22,11 +22,12 @@ Status: active zero-to-one codebase; off-registry classification unresolved. As 
 - Agent branches use `agent/<scope>-<short-description>`.
 - Normal work may use `feat/`, `fix/`, `docs/`, or `chore/` followed by a short kebab-case scope.
 - One agent owns one artifact and one branch at a time. Do not start from a branch containing unrelated changes or overwrite another agent's artifact.
-- All work uses branches, PRs, and independent review. The former direct-to-`main` exception is revoked. Never push directly to `main`, merge a PR, or delete a branch.
+- All work uses branches, PRs, and independent review. The former direct-to-`main` exception is revoked. Implementing agents/builders never push directly to `main`, merge their own PRs, or delete unmerged branches. A designated maintainer or approved automation may merge after independent review and green required checks, then delete the merged branch.
 - Use durable issues, PRs, or repository documentation for handoff.
 
 ## 5. Required checks before PR
 
+- Use Node `24.16.0`, pnpm `10.12.4`, and TypeScript strict mode. A toolchain change requires a dated approved decision.
 - Run `pnpm install --frozen-lockfile`.
 - Run `pnpm validate`.
 - Run `git diff --check`.
@@ -35,7 +36,7 @@ Status: active zero-to-one codebase; off-registry classification unresolved. As 
 
 ## 6. Forbidden actions
 
-- Do not push to `main`, merge PRs, delete branches, bypass independent review, overwrite another agent's artifact, or work from a branch with unrelated changes.
+- Do not push to `main`, self-merge or bypass independent review, delete unmerged branches, overwrite another agent's artifact, or work from a branch with unrelated changes.
 - Do not deploy, promote, link projects, change environments, domains, DNS, or provider configuration.
 - Do not run live geodata ingestion, production database writes, destructive migrations, or routine commands against production systems.
 - Do not weaken physical-safety, trespass, access, legal, licensing, attribution, moderation, auth, payment, or entitlement controls.
