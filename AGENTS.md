@@ -147,8 +147,8 @@ MapLibre with CARTO vector tiles is the established runtime direction; Mapbox is
 
 ### Money
 
-- The current payment model is Stripe Billing/subscriptions only; there is no Stripe Connect and no payout flow.
-- Stripe test mode and inactive product/price/portal configuration are available for development. Stop before configuration is exposed to real users, enables a real charge/subscription/refund, or otherwise activates live money. Record the price, entitlement, legal, and refund decisions before that activation.
+- Dormant test-mode monetization currently implements monthly and annual subscriptions plus an optional lifetime one-time plan. There is no Stripe Connect and no payout flow; the final plan, entitlement, and refund policy remains unresolved.
+- Stripe test mode and inactive product/price/portal configuration are available for development. Stop before configuration can create a real charge/subscription/refund or otherwise activates live money. Record the final price, entitlement, legal, and refund decisions before that activation.
 
 ### Email and auth
 
