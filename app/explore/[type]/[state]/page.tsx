@@ -29,6 +29,7 @@ async function countInState(feature: FeatureType, code: string): Promise<number>
     .select('id', { count: 'exact', head: true })
     .eq('feature_type', feature)
     .eq('state_code', code)
+    .eq('display_hidden', false)
     .in('moderation_status', ['verified', 'community']);
   if (error) return 0;
   return count ?? 0;
