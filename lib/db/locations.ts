@@ -21,7 +21,13 @@ export interface LocationFilters {
 const PUBLIC_STATUSES = ['verified', 'community'];
 
 function applyFilters(query: any, filters: LocationFilters) {
-  let q = query.in('moderation_status', filters.verifiedOnly ? ['verified'] : PUBLIC_STATUSES);
+  // Bare OSM points (unnamed/undescribed springs) and exact-coordinate
+  // duplicates carry display_hidden=true so the map and discovery lead with
+  // real destinations. Detail pages and the sitemap bypass this filter, so a
+  // hidden location is still reachable by its URL.
+  let q = query
+    .eq('display_hidden', false)
+    .in('moderation_status', filters.verifiedOnly ? ['verified'] : PUBLIC_STATUSES);
   if (filters.types?.length) q = q.in('feature_type', filters.types);
   if (filters.difficulties?.length) q = q.in('difficulty_tier', filters.difficulties);
   if (filters.state) q = q.eq('state_code', filters.state.toUpperCase());
@@ -47,6 +53,9 @@ export async function listLocations(filters: LocationFilters = {}): Promise<Loca
   for (let start = 0; start < limit; start += pageSize) {
     const end = Math.min(start + pageSize, limit) - 1;
     const { data, error } = await applyFilters(db.from('location').select('*'), filters)
+      // Lead with the most-curated rows (photo + description + verified), then
+      // alphabetical within an equal score.
+      .order('quality_score', { ascending: false, nullsFirst: false })
       .order('name')
       .range(start, end);
     if (error) throw new Error(`listLocations: ${error.message}`);
