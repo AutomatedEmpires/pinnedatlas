@@ -89,7 +89,7 @@ Stop before any of the following:
 - transferring repository, provider, domain, or account ownership;
 - making a public launch announcement or presenting the product as publicly launched;
 - purchasing ads, starting campaigns, or sending marketing broadcasts;
-- filing legal documents on the founder's behalf;
+- filing legal or regulatory documents for the founder, the venture, or any other entity;
 - completing an action that requires MFA when the founder is unavailable.
 
 A hard stop blocks only that action. Build and verify the implementation, sandbox flow, migration plan, safety checklist, or launch packet so the decision is narrow.
