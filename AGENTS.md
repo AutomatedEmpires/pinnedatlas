@@ -1,6 +1,6 @@
 # PinnedAtlas — Venture Operating Contract
 
-This contract is binding for every contributor and agent in this repository. `FABLE5_BUILD_BRIEF.md` remains a source for product, model, and design intent; this contract governs safe execution, branch practice, provider boundaries, and portfolio classification.
+This contract is binding for every contributor and agent in this repository. It governs safe execution, branch practice, provider boundaries, and portfolio classification.
 
 ## Portfolio classification
 
@@ -11,6 +11,10 @@ PinnedAtlas is **active but off-registry**. It is not currently one of the seven
 - Do not add it to canonical portfolio counts, status boards, provider maps, shared budgets, or primary venture documentation as if it were registry-approved.
 - Do not let its providers, product assumptions, or data model become defaults for canonical ventures.
 - Classification is not a request to delete or abandon the project; it is a prioritization boundary.
+
+## Source of truth and dated supersession
+
+`FABLE5_BUILD_BRIEF.md` records initial product intent, but later repository evidence supersedes several initial-pass assumptions: MapLibre/CARTO replaced the proposed Mapbox runtime, offline support shipped, the public core operates free, monetization is dormant, and direct-to-`main` work is revoked. Use current code plus the newest dated repository/founder decision for implementation truth. When two current sources still conflict, document the conflict and add a dated decision instead of silently choosing the convenient one.
 
 ## Operating doctrine
 
@@ -28,7 +32,7 @@ The differentiator is not a large pin count. It is confidence about **whether a 
 
 - **Primary user:** an outdoor explorer deciding what natural feature to visit and planning around access, conditions, distance, and difficulty.
 - **Contributing user:** a signed-in person submitting a location, report, photo, or condition update for moderation.
-- **Potential buyer:** a repeat explorer who may eventually pay for premium planning, saving, offline, or organization features through a subscription—never for safety-critical truth.
+- **Potential buyer:** a repeat explorer who may eventually pay for optional premium planning or organization features through a subscription—never for safety-critical truth. The operating core and existing offline capability are free; the future price and entitlement boundary remain a recorded product decision.
 
 People may reach physical hazards, restricted land, or sensitive locations based on this product. Safety and access context must work for anonymous/free users.
 
@@ -42,7 +46,7 @@ PinnedAtlas should become:
 - a provenance-aware geodata pipeline with moderation, deduplication, attribution, and safe treatment of sensitive locations;
 - a field guide with difficulty, access, ownership, hazard, and “turn back” guidance;
 - a resilient mobile/offline experience for low-signal areas;
-- a clear free product with optional subscription entitlements only after the legal/payment model is approved.
+- a clear free product with dormant optional Stripe Billing that activates only after a dated price/entitlement decision and the legal/payment model are approved.
 
 Personal saved, visited, note, and trip state belongs in `user_location_state` or its established user-state boundary. Controlled values use repository enums/dictionaries rather than free text.
 
@@ -85,7 +89,7 @@ Stop before any of the following:
 - transferring repository, provider, domain, or account ownership;
 - making a public launch announcement or presenting the product as publicly launched;
 - purchasing ads, starting campaigns, or sending marketing broadcasts;
-- filing legal documents or accepting legal/source/provider terms on the founder's behalf;
+- filing legal documents on the founder's behalf;
 - completing an action that requires MFA when the founder is unavailable.
 
 A hard stop blocks only that action. Build and verify the implementation, sandbox flow, migration plan, safety checklist, or launch packet so the decision is narrow.
@@ -119,7 +123,7 @@ Known provider/source surfaces include Doppler, Vercel, Supabase/PostGIS, Clerk,
 
 Agents may use established local, sandbox, test, isolated, and protected-preview resources within an assigned task. Repository configuration, provider adapters, preview-safe validation, and fail-closed fallbacks are normal implementation. Never reveal secret values or borrow another venture's project, sender, account, or data.
 
-Production provider writes are controlled operations. Do not change live domains/DNS, billing, RBAC, recovery, production environments, production auth, live webhooks/senders, source-provider terms, or ownership without the applicable hard-stop approval. Preparing exact provider steps and validation is allowed.
+Assigned agents may make reversible, non-billing provider configuration changes in established dev, preview, or production lanes when scope, least privilege, rollback, and verification are explicit. Stop only when the action crosses a listed hard stop: paid plan, live money, domain/DNS, destructive deletion, destructive production migration, credential rotation/revocation, ownership transfer, public launch/campaign, legal filing, or unavailable MFA. Preparing exact provider steps and validation is always allowed.
 
 MapLibre with CARTO vector tiles is the established runtime direction; Mapbox is an optional future upgrade, not a missing dependency to provision casually. Missing keys must preserve honest signed-out, list, empty-data, and “payments unavailable” fallbacks.
 
@@ -144,13 +148,12 @@ MapLibre with CARTO vector tiles is the established runtime direction; Mapbox is
 ### Money
 
 - The current payment model is Stripe Billing/subscriptions only; there is no Stripe Connect and no payout flow.
-- Stripe test mode is available for development. Live products/prices, subscriptions, captures, refunds, or production portals are hard stops until product, legal, entitlement, refund, and payment decisions are recorded.
+- Stripe test mode and inactive product/price/portal configuration are available for development. Stop before configuration is exposed to real users, enables a real charge/subscription/refund, or otherwise activates live money. Record the price, entitlement, legal, and refund decisions before that activation.
 
 ### Email and auth
 
-- Internal delivery tests may use venture-scoped test recipients and synthetic users.
-- Do not activate a sender/domain or send real marketing/user email without the applicable approval.
-- Clerk fallbacks must remain fail-safe. Do not weaken authorization, expose private user state, or provision production users from a coding task.
+- Internal delivery tests may use venture-scoped test recipients and synthetic users. Assigned reversible transactional-email work may proceed with non-customer recipients; DNS activation, a public/marketing campaign, or real-user launch remains a hard stop where applicable.
+- Clerk fallbacks must remain fail-safe. Assigned reversible auth configuration may proceed with least privilege, rollback, and synthetic identities; do not weaken authorization, expose private user state, rotate credentials, or transfer ownership.
 
 ### Privacy and secrets
 
@@ -214,11 +217,11 @@ Still protect source licenses, physical safety, private/sensitive locations, sec
 Refreshed 2026-07-13 UTC:
 
 - Draft PR #2, `docs: add agent operating standards`, is the only open PR and is this branch.
-- The GitHub Dependency Graph is disabled. The required `dependency-review` job therefore fails with “Dependency review is not supported on this repository.” An administrator must decide whether to enable the repository setting or change the required-check policy; application code cannot repair it.
+- The GitHub Dependency Graph is disabled. The `dependency-review` workflow therefore fails with “Dependency review is not supported on this repository.” It is not currently branch-protection-required, but it prevents an all-green check rollup. An administrator must decide whether to enable Dependency Graph or remove/adjust the workflow; application code cannot repair it.
 - Founder registry classification remains unresolved beyond the operating classification in this file: active but off-registry and outside the seven canonical ventures unless confirmed otherwise.
-- Live money, public launch, safety/access policy, provider governance, and entitlement/refund decisions remain unapproved.
+- Repository evidence describes an operating free public product, dormant Stripe Billing, and outstanding counsel confirmation for the governing-law/contact placeholders before payments at scale. No current repository approval record was found for live monetization or its final price/entitlement/refund policy; confirm current decisions before activation. Safety, access, provenance, and provider separation remain ongoing product-quality requirements, not presumed founder gates.
 
-The dependency setting blocks a fully green required-check result, not continued docs/code work or independent review.
+The dependency setting blocks an all-green check rollup, not continued docs/code work, independent review, or—under the current unprotected branch settings—merge eligibility.
 
 ## Output format for future agents
 
