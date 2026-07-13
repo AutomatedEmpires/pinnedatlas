@@ -1,69 +1,76 @@
 # PinnedAtlas — Agent Operating Contract
 
-This file is binding for every contributor and coding agent touching this repo.
+This contract is binding for every contributor and agent working in this repository. Snapshot facts are dated 2026-07-12; refresh PR and rollout status before acting.
 
-## Prime Doctrine
-- Notion decides.
-- GitHub builds.
-- Figma shows.
-- Everything else runs.
+## 1. App purpose
 
-## Source of Truth Split
-- No locked Notion canon exists yet for PinnedAtlas. Until one is authored, `FABLE5_BUILD_BRIEF.md` in this repo's root is the authoritative product/spec truth for the initial zero-to-one production build.
-- Once Notion canon exists for this product, standard doctrine resumes: Notion = product/vision truth, this repo = implementation truth, product conflicts resolve to Notion.
+PinnedAtlas is a map-first, mobile-first product for discovering natural features such as caves, waterfalls, and hot springs. `FABLE5_BUILD_BRIEF.md` is the current repository product mandate. One canonical `location` object must drive map pins, detail pages, search, submission, and moderation; personal saved, visited, and note data belongs in `user_location_state`; and controlled values must use the established enums or dictionaries rather than free text.
 
-## Core Rule
-Standard steady-state flow: Spec -> Acceptance Criteria -> Branch -> Implementation -> PR -> Review -> CI -> Merge -> Deploy -> Notion status update.
+Because the product can route people to physical hazards or restricted property, safety, trespass, access, and legal warnings are launch-blocking requirements.
 
-**Founder-authorized exception for the initial build pass only:** there is no existing product surface to regress, so direct continuous iteration on `main` is permitted to maximize execution speed during the first zero-to-one pass described in `FABLE5_BUILD_BRIEF.md`. Once the app is live with real users, resume standard branch/PR/review discipline.
+## 2. Business vision
 
-## Working Rules (steady-state, resumes after initial build pass)
-- One branch per slice.
-- One owner per task.
-- Open a PR against `main`.
-- Never push directly to `main`.
-- Builder is never the sole approver.
-- Never commit secrets.
-- No destructive operations without explicit approval.
+Build an accessible natural-feature discovery experience that earns trust through accurate map context, honest data coverage, visible attribution, safe access guidance, and clear limits. Premium subscriptions may eventually support the product, but discovery, safety, legal, entitlement, refund, and payment rules must be approved before monetization.
 
-## Runtime
-- Node `24.16.0`
-- pnpm `10.12.4`
-- GitHub-hosted CI runners by default
+## 3. Current rollout status
 
-## Quality Bar
-- TypeScript strict where applicable.
-- Mobile-first and accessible UI.
-- Small, reviewable PRs (steady-state).
-- `lint`, `typecheck`, `test`, and `build` should stay green when those scripts exist.
+Status: active zero-to-one codebase; off-registry classification unresolved. As of 2026-07-12 there are no open PRs, and the product is not money-ready or transfer-ready. Refresh PRs, registry classification, ownership, and rollout status before acting.
 
-## Integration Spine (pinned — do not introduce alternates without a dated decision)
-Shared across the AutomatedEmpires venture portfolio (Sweepza, Explore & Earn, etc.):
-- Secrets: Doppler
-- Hosting: Vercel
-- Database: Supabase Postgres + PostGIS (geospatial queries on location data)
-- Auth: Clerk
-- Maps: Mapbox
-- Payments: Stripe Billing + Customer Portal (subscriptions only — **not** Stripe Connect; PinnedAtlas has no host/creator marketplace or payouts)
-- Media: Cloudinary
-- Observability: PostHog + Sentry
-- Icons: Phosphor, single semantic registry
-- Email: Resend
-- Geodata ingestion: OpenStreetMap Overpass API (primary), USGS GNIS, National Park Service API, Wikidata (supplementary)
+## 4. Branch naming rules
 
-## Sensitive Areas
-- auth
-- payments / entitlements
-- destructive database changes
-- permissions / RLS
-- trust & safety / content moderation (user-submitted locations and condition reports)
-- legal / safety disclaimers — this product routes real people to caves, waterfalls, and hot springs; physical hazard and trespass-liability disclaimers are launch-blocking, not optional
-- geodata licensing/attribution (OSM data is ODbL and requires visible attribution)
+- Before work, run `git status -sb` and `git branch --show-current`, then inspect open PRs and owned artifacts.
+- Agent branches use `agent/<scope>-<short-description>`.
+- Normal work may use `feat/`, `fix/`, `docs/`, or `chore/` followed by a short kebab-case scope.
+- One agent owns one artifact and one branch at a time. Do not start from a branch containing unrelated changes or overwrite another agent's artifact.
+- All work uses branches, PRs, and independent review. The former direct-to-`main` exception is revoked. Never push directly to `main`, merge a PR, or delete a branch.
+- Use durable issues, PRs, or repository documentation for handoff.
 
-## Repo-Specific Additions
-- Read `FABLE5_BUILD_BRIEF.md` before writing any code. It is the current build mandate.
-- **Map runtime (dated decision 2026-07-07):** the org spine names Mapbox, but the map is founder-mandated to be the landing experience and cannot be gated on a founder-provided token. Runtime uses **MapLibre GL JS + free CARTO dark vector tiles** (no token) by default, giving a working map-first product immediately. Mapbox remains an optional upgrade (swap `STYLE_URL` in `components/map-explorer.tsx` + add a token transform). Attribution (OSM + CARTO) renders via the map's attribution control.
-- One canonical `location` object drives map pin, detail page, search, submission, and moderation. Never fork parallel location models for seeded vs. user-submitted data.
-- User-specific state (saved/favorited, visited, personal notes) lives in `user_location_state`, never on `location`.
-- Controlled values (`feature_type`, `difficulty_tier`, `access_type`, `moderation_status`, report reason) come from enums/dictionaries — no free text for these fields.
-- Free vs. premium gating is enforced server-side against Stripe subscription status synced via webhook — never client-only.
+## 5. Required checks before PR
+
+- Run `pnpm install --frozen-lockfile`.
+- Run `pnpm validate`.
+- Run `git diff --check`.
+- Review the diff for scope, safety and legal regressions, attribution, canonical data-model consistency, and honest fallback behavior.
+- Geodata ingestion commands are operational actions, never routine tests. Do not run them as validation.
+
+## 6. Forbidden actions
+
+- Do not push to `main`, merge PRs, delete branches, bypass independent review, overwrite another agent's artifact, or work from a branch with unrelated changes.
+- Do not deploy, promote, link projects, change environments, domains, DNS, or provider configuration.
+- Do not run live geodata ingestion, production database writes, destructive migrations, or routine commands against production systems.
+- Do not weaken physical-safety, trespass, access, legal, licensing, attribution, moderation, auth, payment, or entitlement controls.
+- Do not fork parallel location models, store user-specific state on `location`, or replace controlled enums with free text.
+- Do not expose secrets, private user data, private locations, cookies, tokens, sensitive provider IDs, or recovery material.
+
+## 7. Provider no-touch zones
+
+Provider no-touch means no dashboard, CLI, or API writes. It covers Doppler; Vercel; Supabase/PostGIS; Clerk; Stripe; Resend and DNS; MapLibre, CARTO, and Mapbox; Cloudinary; Sentry and PostHog; and geodata source APIs. Do not deploy, promote, link, change environment variables, domains, or DNS, alter secrets, run live migrations or SQL, change auth/storage, create charges/products/prices/webhooks/refunds/payouts, send email, change telemetry/media, or write to source APIs. Read-only provider inspection requires explicit scope.
+
+## 8. Data, money, email, and auth guardrails
+
+- Do not perform live geodata ingestion or production database mutations.
+- Use authoritative or open sources for public geodata and preserve all licenses and attribution. OpenStreetMap data requires visible OSM/ODbL attribution.
+- Do not ingest private locations or expose sensitive or hazardous locations without an approved safety policy.
+- Payments are limited to Stripe Billing and subscriptions. There is no Stripe Connect and there are no payouts. Do not activate live subscriptions or charges until legal, safety, entitlement, refund, and payment rollout approval is recorded.
+- Do not activate live Clerk or Resend, alter production auth, or send email.
+- Never commit, log, paste, or expose secrets, private user data, private locations, cookies, tokens, sensitive provider IDs, or recovery material.
+
+## 9. Design notes
+
+Preserve the map-first landing experience, mobile accessibility, and the dated MapLibre GL JS plus free CARTO dark vector tile runtime decision. Mapbox remains only an optional future upgrade. Keep attribution visible, including OSM and CARTO where applicable. Empty, loading, error, and fallback states must be honest. Do not redesign the product while performing scoped work.
+
+## 10. Current known PRs and blockers
+
+Snapshot date: 2026-07-12. There are no open PRs. The unresolved blocker is founder classification of this existing but off-registry repository. The product is not money-ready or transfer-ready; physical safety, trespass/legal guidance, provider governance, entitlement/refund policy, and rollout approvals remain gating concerns. Refresh all facts before acting.
+
+## 11. Output format for future agents
+
+Every PR or handoff must report:
+
+- Branch name and HEAD commit.
+- Files changed and exact scope.
+- Exact checks run and their results, including checks not run and why.
+- Provider, source-API, ingestion, database, or other live-system actions; normally state `none` explicitly.
+- Risks and blockers, including safety, legal, attribution, and data concerns where relevant.
+- PR URL.
+- For UI work, screenshots and accessibility notes.
