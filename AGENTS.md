@@ -1,3 +1,22 @@
+<!-- ae-control-plane v1 (2026-07-16). Machine operating contract; product docs follow below. -->
+# Operating contract — Automated Empires control plane
+
+- **Canonical clone (the ONLY writable copy):** WSL `Ubuntu-24.04-Recovered` → `/home/jackson/automatedempires/ventures/pinnedatlas`.
+  Never clone this repository anywhere else on the machine. Parallel work uses controlled
+  worktrees: `ae start pinnedatlas -t <task> -a <agent> --worktree`.
+- **Sessions:** acquire the single-writer lease first (`ae start pinnedatlas -t <task> -a <agent>`);
+  end with `ae finish pinnedatlas`. Work counts as done ONLY when pushed and remote-SHA-verified.
+- **Deploys:** merging `main` auto-deploys production via Vercel — **LIVE at pinnedatlas.com**.
+- **Validate before merge:** `pnpm typecheck && pnpm lint` (CI must be green; squash merges).
+- **Providers (fixed — never swap or cross-wire):** db=supabase, auth=clerk (accounts built but DORMANT), payments=stripe (built but DORMANT — machine Stripe auth resolves to E&E, do not commingle), maps=map provider (data-quality pass 2026-07-13).
+- **LOCKED:** Free product stays free until founder activates paid; do not enable Stripe/accounts
+- **LOCKED:** Never use E&E's Stripe credentials here
+- **Warn before:** MERGING TO MAIN DEPLOYS pinnedatlas.com
+- **Warn before:** enabling payments or accounts
+- Full policy: `github.com/AutomatedEmpires/ae-control` → `POLICY.md`. Briefing: `ae info pinnedatlas`.
+
+---
+
 # PinnedAtlas — Agent Operating Contract
 
 This file is binding for every contributor and coding agent touching this repo.
